@@ -10,6 +10,7 @@ pub struct ServerContext {
 }
 
 /* Internal methods */
+fn startServer() -> Result<u32, u32> {}
 fn connectToServer(ipAddress: &String, port: &u32) -> ServerContext {}
 fn writeToContext(data: Value, context: ServerContext) -> Result<u32, u32> {}
 fn pushToServer(context: ServerContext) -> Result<u32, u32> {}
