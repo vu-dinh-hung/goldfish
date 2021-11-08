@@ -78,25 +78,101 @@ pub fn pull() {
     todo!()
 }
 
+pub fn set_remote() {
+    //! Sets the remote links for pull and push
+    todo!()
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test1() {
-        unimplemented!();
+    fn test_1_init() {
+        //! Check and make sure the correct initial files and folders are created
+        todo!();
     }
 
     #[test]
-    fn test2() {
-        unimplemented!();
+    fn test_2_clone() {
+        //! Check and make sure the repository from the url is correctly copied over
+        todo!();
     }
 
     #[test]
-    fn test3() {
-        unimplemented!();
+    fn test_3_add() {
+        //! Check that the .dvcs folder records the staged files correctly
+        todo!();
     }
 
     #[test]
-    fn test4() {
-        unimplemented!();
+    fn test_4_remove() {
+        //! Check that the .dvcs folder records the files removed from staging correctly
+        todo!();
+    }
+
+    #[test]
+    fn test_5_commit() {
+        //! Check that the .dvcs folder records a snapshot correctly
+        todo!();
+    }
+
+    #[test]
+    fn test_6_status() {
+        //! Check that the right output is displayed to the shell
+        todo!();
+    }
+
+    #[test]
+    fn test_7_heads() {
+        //! Check that the right output is displayed to the shell, given the current data inside the HEAD file
+        todo!();
+    }
+
+    #[test]
+    fn test_8_diff() {
+        //! Check that the right output is displayed to the shell, given two test commits
+        todo!();
+    }
+
+    #[test]
+    fn test_9_cat() {
+        //! Check that the right output is displayed to the shell, given a test file and test commit
+        todo!();
+    }
+
+    #[test]
+    fn test_10_log() {
+        //! Check that the right output is displayed to the shell after a series of test commits
+        todo!();
+    }
+
+    #[test]
+    fn test_11_checkout() {
+        //! Check that the state of the repo directory is correct, given a test commit
+        todo!();
+    }
+
+    #[test]
+    fn test_12_merge() {
+        //! Check that the state of the repo directory is correct, given a test commit
+        todo!();
+    }
+
+    #[test]
+    fn test_13_push() {
+        //! Check that the right request is sent to a mock server
+        todo!();
+    }
+
+    #[test]
+    fn test_14_pull() {
+        //! Check that the right request is sent to a mock server, and that the directory
+        //! is updated correctly
+        todo!()
+    }
+
+    #[test]
+    fn test_15_errors() {
+        //! Check that the functions return/output the right errors if called incorrectly
+        todo!();
     }
 }
