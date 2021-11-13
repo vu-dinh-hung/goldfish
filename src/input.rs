@@ -1,3 +1,5 @@
+
+mod controller
 /*
     Print welcome message, start receiving input from user and call other functions to process command
     Call PrintError() in display module if we have invalid command name
@@ -39,7 +41,8 @@ pub fn ProcessHelp(String command) -> !;
     @return: ! (never return)
 */
 pub fn ProcessInit(String command){
-    
+    controller::init();
+
 }
 
 /*
