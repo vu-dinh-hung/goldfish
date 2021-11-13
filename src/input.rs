@@ -4,7 +4,21 @@
     
     @return: ! (never return)
 */
-pub fn Initialize() -> !;
+pub fn Initialize() -> !{
+
+}
+
+
+pub fn parseCommand(){
+    let command = std::env::args().nth(1).expect("no command given");
+    match command{
+        "init" -> ProcessInit(command)
+        "heads" -> ProcessHeads(command)
+        "cat" -> ProcessCat(command)
+    }
+}
+
+
 
 /*
     Verify help command and process by calling method in repository module
@@ -24,7 +38,9 @@ pub fn ProcessHelp(String command) -> !;
     @param command: command received from users
     @return: ! (never return)
 */
-pub fn ProcessInit(String command) -> !;
+pub fn ProcessInit(String command){
+    
+}
 
 /*
     Verify clone command and process by calling method in repository module
