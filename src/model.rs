@@ -101,3 +101,71 @@ pub fn create_virtual_file_from_revision_path(path: String, rev: Revision) -> Re
 pub fn get_list_of_revisions() -> Result<Vec<Revision>, Error> {
     todo!()
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_diff_virtual_files() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_merge_virtual_files() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_get_list_of_track_file_corrupted_dvcs() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_get_list_of_track_file_normal() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_add_file_not_exist() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_add_file_normal() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_delete_file_not_exist() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_delete_file_normal() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_get_current_revision_corrupted_dvcs() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_get_current_revision_normal() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_get_current_branch_corrupted_dvcs() {
+        todo!();
+    }
+    
+    #[test]
+    fn test_get_current_branch_normal() {
+        todo!();
+    }
+    
+    #[test]
+    fn create_virtual_file_from_path_not_exist() {
+        todo!();
+    }
+}
