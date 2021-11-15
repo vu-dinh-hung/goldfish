@@ -16,7 +16,7 @@ pub fn initialize() {
         Some(x) =>
             match x.as_str(){
             "init" => process_init("init".to_string()),
-            "head" => process_heads("head".to_string()),
+            "heads" => process_heads("heads".to_string()),
             "cat" => process_cat("cat".to_string()),
             _ => display::print_error("unexpected command"),
             },
