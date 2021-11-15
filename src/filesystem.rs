@@ -20,7 +20,16 @@ pub fn write_file(data: &str, path: &str) -> io::Result<()> {
 }
 
 pub fn read_file(path: &str) -> io::Result<String> {
+    //! Read all the contents of a file to a String
     fs::read_to_string(path)
+}
+
+pub fn join(paths: Vec<&str>) -> String {
+    //! Join the paths into a path string (in the format of the host OS)
+    //! Currently panics if the conversion from OsString to String (after joining)
+    //! fails. This will be fixed to be safer later.
+    paths.iter().fold(Path::new("").to_path_buf(), |acc, path| acc.join(path))
+        .into_os_string().into_string().unwrap()
 }
 
 pub fn create_directory(path: &str) -> io::Result<()> {

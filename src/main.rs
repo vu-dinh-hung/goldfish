@@ -4,7 +4,6 @@ mod utilities;
 mod filesystem;
 mod networking;
 mod input;
-
 mod display;
 
 
@@ -15,4 +14,5 @@ fn main() {
         None => println!("Success"),
     }
     input::initialize();
+    controller::init();
 }

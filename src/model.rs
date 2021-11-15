@@ -4,6 +4,37 @@ use crate::filesystem;
 const GOLDFISH: &str = ".goldfish/state.toml";
 
 /* Public Struct */
+#[derive(Debug)]
+pub struct Repository {
+    working_path: String,
+    dvcs_path: String,
+}
+
+impl Repository {
+    pub fn find(path: &str) -> Option<Repository> {
+        //! Find the root working path and .dvcs path of the current DVCS repository,
+        //! and return a Repository object with those paths
+        if !filesystem::is_directory(path) {
+            return None
+        }
+
+        let current_dvcs_path = filesystem::join(vec![path, ".dvcs"]);
+        if filesystem::is_directory(current_dvcs_path.as_str()) {
+            return Some(Repository { working_path: path.to_owned(), dvcs_path: current_dvcs_path })
+        }
+
+        let parent = filesystem::parent(path)?;  // return None if there is no parent path
+        Repository::find(parent.as_str())  // recursively find in parent path
+    }
+
+    pub fn get_dvcs_path<'a>(&'a self) -> &'a str {
+        &self.dvcs_path
+    }
+
+    pub fn get_working_path<'a>(&'a self) -> &'a str {
+        &self.working_path
+    }
+}
 
 // Data structure to interact with a file
 pub struct VirtualFile {}

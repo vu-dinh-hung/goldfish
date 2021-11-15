@@ -1,10 +1,29 @@
-
-
 //! # Controller
+use crate::model::{Repository};
+use crate::filesystem;
+
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
-    todo!()
+    let current_working_directory = std::env::current_dir().unwrap().into_os_string().into_string().unwrap();
+    if Repository::find(current_working_directory.as_str()).is_some() {
+        panic!("Already a DVCS repository");
+    }
+    match filesystem::create_directory(filesystem::join(vec![current_working_directory.as_str(), ".dvcs"]).as_str()) {
+        Ok(_) => {
+            assert!(Repository::find(current_working_directory.as_str()).is_some());
+            let repo = Repository::find(current_working_directory.as_str()).unwrap();
+            filesystem::write_file("", filesystem::join(vec![repo.get_dvcs_path(), "state.toml"]).as_str())
+                .expect("Something went wrong creating the `state.toml` file");
+            filesystem::create_directory(filesystem::join(vec![repo.get_dvcs_path(), "staging"]).as_str())
+                .expect("Something went wrong creating the `staging` directory");
+            filesystem::create_directory(filesystem::join(vec![repo.get_dvcs_path(), "objects"]).as_str())
+                .expect("Something went wrong creating the `objects` directory");
+            filesystem::create_directory(filesystem::join(vec![repo.get_dvcs_path(), "commits"]).as_str())
+                .expect("Something went wrong creating the `commits` directory");
+        },
+        Err(_) => panic!("Something went wrong creating the .dvcs folder")
+    }
 }
 
 pub fn clone(url: String) {
