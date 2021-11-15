@@ -1,6 +1,8 @@
-
-
 //! # Controller
+use crate::utilities;
+use crate::filesystem;
+use crate::model;
+use std::path::PathBuf;
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
@@ -13,21 +15,16 @@ pub fn clone(url: String) {
     todo!()
 }
 
-pub fn add(names: Vec<String>) {
-    //! Add the specified file names to the "staging area", which is just a file in
-    //! the .dvcs folder
-    todo!()
-}
-
-pub fn remove(names: Vec<String>) {
-    //! Remove the specified file names from the "staging area"
-    todo!()
-}
-
-pub fn commit() {
-    //! Create a new snapshot (full copy) of the current states of the current directory,
-    //! excluding changed files that are not in the staging area
-    todo!()
+pub fn commit() -> Option<model::Error> {
+    let rev_id = utilities::hash();
+    match model::add_revision(&rev_id) {
+        Some(e) => return Some(e),
+        None => (),
+    }
+    let mut rev_folder = PathBuf::from(model::GOLDFISH);
+    rev_folder.push(rev_id);
+    filesystem::copy_dir(model::STAGING, rev_folder).unwrap();
+    return None;
 }
 
 pub fn status() {

@@ -1,20 +1,16 @@
 use toml::Value;
 use crate::filesystem;
-use std::path::PathBuf;
-use std::fs;
-use std::env;
+use crate::utilities;
+use std::collections::HashMap;
 
-const GOLDFISH: &str = "./goldfish";
+pub const GOLDFISH: &str = "./goldfish";
 const STATE: &str = "./goldfish/state.toml";
-const STAGING: &str = "./goldfish/staging/";
+pub const STAGING: &str = "./goldfish/staging/";
 
 /* Public Struct */
 
 // Data structure to interact with a file
 pub struct VirtualFile {}
-
-// Data structure to represent a revision
-pub struct Revision {}
 
 /* Public Enum */
 pub enum LineChangeState {
@@ -48,13 +44,34 @@ fn get_list_of_track_files() -> Result<Vec<String>, Error> {
     todo!()
 }
 
-fn map_path_to_snapshot<'a>(path: &'a str, snapshot_path: &'a str) -> String {
-    let mut dir_path = std::env::current_dir().unwrap();
-    let absolute_path = fs::canonicalize(std::path::PathBuf::from(path)).unwrap();
-    let relative_path = absolute_path.to_str().unwrap()[dir_path.to_str().unwrap().chars().count()+1..].to_string();
-    dir_path.push(snapshot_path);
-    dir_path.push(relative_path);
-    return dir_path.to_str().unwrap().to_string();
+fn read_state() -> Result<Value, Error> {
+    // read Goldfish file into goldfish_raw
+    let goldfish_raw: String;
+    match filesystem::read_file(STATE) {
+        Ok(raw) => goldfish_raw = raw,
+        Err(_e) => return Err(Error::FailToLoadGoldfish)
+    }
+    // deserialize raw
+    let goldfish_state: Value;
+    match toml::from_str(goldfish_raw.as_str()) {
+        Ok(val) => goldfish_state = val,
+        Err(_e) => return Err(Error::FailToLoadGoldfish)
+    }
+    return Ok(goldfish_state);
+}
+
+fn write_state(goldfish_state: Value) -> Option<Error> {
+    // serialize goldfish
+    let goldfish_raw: String;
+    match toml::to_string(&goldfish_state) {
+        Ok(s) => goldfish_raw = s,
+        Err(_e) => return Some(Error::SomethingWentWrong)
+    }
+    // write back to Goldfish file
+    match filesystem::write_file(goldfish_raw.as_str(), STATE) {
+        Ok(_v) => return None,
+        Err(_e) => return Some(Error::SomethingWentWrong),
+    }
 }
 
 /* External methods */
@@ -70,45 +87,40 @@ pub fn add_track_file(path: &str) -> Option<Error> {
     if !filesystem::is_file(path) {
         return Some(Error::NotFile);
     }
-    // read Goldfish file into goldfish_raw
-    let mut goldfish_raw: String;
-    match filesystem::read_file(STATE) {
-        Ok(raw) => goldfish_raw = raw,
-        Err(_e) => return Some(Error::FailToLoadGoldfish)
-    }
-    // deserialize raw
-    let mut goldfish_info: Value;
-    match toml::from_str(goldfish_raw.as_str()) {
-        Ok(val) => goldfish_info = val,
-        Err(_e) => return Some(Error::FailToLoadGoldfish)
-    }
-    // add tracked file
-    if goldfish_info.get("tracked_file").is_none() {
-        goldfish_info.as_table_mut().unwrap().insert(String::from("tracked_file"), Value::try_from(Vec::new() as Vec<Value>).unwrap());
-    }
-    match goldfish_info["tracked_file"].as_array_mut() {
-        Some(vector) => {
-            vector.push(Value::try_from(path).unwrap());
-            vector.dedup();
-        }
-        None => return Some(Error::FailToLoadGoldfish)
-    }
-    // serialize goldfish
-    match toml::to_string(&goldfish_info) {
-        Ok(s) => goldfish_raw = s,
-        Err(_e) => return Some(Error::SomethingWentWrong)
-    }
-    // write back to Goldfish file
-    match filesystem::write_file(goldfish_raw.as_str(), STATE) {
-        Ok(_v) => (),
-        Err(_e) => return Some(Error::SomethingWentWrong),
-    }
     // copy file to staging
-    match filesystem::copy_file(path, map_path_to_snapshot(path, STAGING).as_str()) {
+    match filesystem::copy_file(path, utilities::map_path_to_snapshot(path, STAGING).as_str()) {
         Ok(_v) => (),
         Err(_e) => return Some(Error::SomethingWentWrong),
     }
     return None;
+}
+
+pub fn add_revision(rev_id: &String) -> Option<Error> {
+    let mut goldfish_state: Value;
+    match read_state() {
+        Ok(state) => goldfish_state = state,
+        Err(_e) => return Some(Error::FailToLoadGoldfish)
+    }
+    // add tracked file
+    if goldfish_state.get("revisions").is_none() {
+        goldfish_state.as_table_mut().unwrap().insert(String::from("revisions"), Value::try_from(Vec::new() as Vec<Value>).unwrap());
+    }
+    let cur_rev_id: String;
+    match get_current_revision() {
+        Ok(rev_id) => cur_rev_id = rev_id,
+        Err(e) => return Some(e),
+    }
+    let mut rev: HashMap<String, Value> = HashMap::new();
+    rev.insert("id".to_string(), Value::try_from(rev_id).unwrap());
+    rev.insert("prev".to_string(), Value::try_from(cur_rev_id).unwrap());
+    match goldfish_state["revisions"].as_array_mut() {
+        Some(vector) => {
+            vector.push(Value::try_from(rev).unwrap());
+            vector.dedup();
+        }
+        None => return Some(Error::FailToLoadGoldfish)
+    }
+    write_state(goldfish_state)
 }
 
 /**
@@ -126,8 +138,19 @@ pub fn delete_track_file(path: String) -> Option<Error> {
  *
  * @return: Err(Error) if failed, Ok(Revision) otherwise
  */
-pub fn get_current_revision() -> Result<Revision, Error> {
-    todo!()
+pub fn get_current_revision() -> Result<String, Error> {
+    let mut goldfish_state: Value;
+    match read_state() {
+        Ok(state) => goldfish_state = state,
+        Err(_e) => return Err(Error::FailToLoadGoldfish)
+    }
+    Ok(goldfish_state.get("HEAD")
+        .or(Some(&Value::try_from("").unwrap()))
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string()
+    )
 }
 
 /**
@@ -157,7 +180,7 @@ pub fn create_virtual_file_from_path(path: String) -> Result<VirtualFile, Error>
  * @param rev: revision of the file
  * @return: Err(Error) if failed, Ok(VirtualFile) otherwise
  */
-pub fn create_virtual_file_from_revision_path(path: String, rev: Revision) -> Result<VirtualFile, Error> {
+pub fn create_virtual_file_from_revision_path(path: String, rev_id: String) -> Result<VirtualFile, Error> {
     todo!()
 }
 
@@ -166,7 +189,7 @@ pub fn create_virtual_file_from_revision_path(path: String, rev: Revision) -> Re
  *
  * @return: Err(Error) if failed, Ok(Vec<Revision>) otherwise
  */
-pub fn get_list_of_revisions() -> Result<Vec<Revision>, Error> {
+pub fn get_list_of_revisions() -> Result<Vec<String>, Error> {
     todo!()
 }
 

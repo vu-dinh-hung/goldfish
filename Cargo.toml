@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 toml = "0.5.8"
+nanoid = "0.4.0"

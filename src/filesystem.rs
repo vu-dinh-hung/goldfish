@@ -42,6 +42,19 @@ pub fn copy_file(source: &str, dest: &str) -> io::Result<u64> {
     fs::copy(source, dest)
 }
 
+pub fn copy_dir(source: impl AsRef<Path>, dest: impl AsRef<Path>) -> io::Result<()> {
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let typ = entry.file_type()?;
+        if typ.is_dir() {
+            copy_dir(entry.path(), dest.as_ref().join(entry.file_name()))?;
+        } else {
+            copy_file(entry.path().to_str().unwrap(), dest.as_ref().join(entry.file_name()).to_str().unwrap())?;
+        }
+    }
+    Ok(())
+}
+
 pub fn is_directory(path: &str) -> bool {
     //! Check if path is a directory
     Path::new(path).is_dir()

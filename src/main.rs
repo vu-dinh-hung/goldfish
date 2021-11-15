@@ -14,5 +14,9 @@ fn main() {
         Some(e) => println!("{:?}", e),
         None => println!("Success"),
     }
+    match controller::commit() {
+        Some(e) => println!("{:?}", e),
+        None => println!("Success"),
+    }
     input::initialize();
 }
