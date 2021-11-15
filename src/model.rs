@@ -66,7 +66,7 @@ fn map_path_to_snapshot<'a>(path: &'a str, snapshot_path: &'a str) -> String {
  * @return: Some(Error) if failed, None otherwise
  */
 pub fn add_track_file(path: &str) -> Option<Error> {
-    // sanity check 
+    // sanity check
     if !filesystem::is_file(path) {
         return Some(Error::NotFile);
     }
@@ -76,7 +76,7 @@ pub fn add_track_file(path: &str) -> Option<Error> {
         Ok(raw) => goldfish_raw = raw,
         Err(_e) => return Some(Error::FailToLoadGoldfish)
     }
-    // deserialize raw 
+    // deserialize raw
     let mut goldfish_info: Value;
     match toml::from_str(goldfish_raw.as_str()) {
         Ok(val) => goldfish_info = val,
@@ -99,7 +99,7 @@ pub fn add_track_file(path: &str) -> Option<Error> {
         Err(_e) => return Some(Error::SomethingWentWrong)
     }
     // write back to Goldfish file
-    match filesystem::save_file(goldfish_raw.as_str(), STATE) {
+    match filesystem::write_file(goldfish_raw.as_str(), STATE) {
         Ok(_v) => (),
         Err(_e) => return Some(Error::SomethingWentWrong),
     }
@@ -176,62 +176,62 @@ mod tests {
     fn test_diff_virtual_files() {
         todo!();
     }
-    
+
     #[test]
     fn test_merge_virtual_files() {
         todo!();
     }
-    
+
     #[test]
     fn test_get_list_of_track_file_corrupted_dvcs() {
         todo!();
     }
-    
+
     #[test]
     fn test_get_list_of_track_file_normal() {
         todo!();
     }
-    
+
     #[test]
     fn test_add_file_not_exist() {
         todo!();
     }
-    
+
     #[test]
     fn test_add_file_normal() {
         todo!();
     }
-    
+
     #[test]
     fn test_delete_file_not_exist() {
         todo!();
     }
-    
+
     #[test]
     fn test_delete_file_normal() {
         todo!();
     }
-    
+
     #[test]
     fn test_get_current_revision_corrupted_dvcs() {
         todo!();
     }
-    
+
     #[test]
     fn test_get_current_revision_normal() {
         todo!();
     }
-    
+
     #[test]
     fn test_get_current_branch_corrupted_dvcs() {
         todo!();
     }
-    
+
     #[test]
     fn test_get_current_branch_normal() {
         todo!();
     }
-    
+
     #[test]
     fn create_virtual_file_from_path_not_exist() {
         todo!();
