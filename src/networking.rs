@@ -4,7 +4,7 @@ use toml::Value;
 /* Public Struct */
 // Data structure to interact with the server
 pub struct ServerContext {
-    ipAddress: String,
+    ip_address: String,
     port: u32,
     data: Value,
 }
@@ -13,7 +13,7 @@ pub struct ServerContext {
 fn start_server() -> Result<u32, u32> {
     todo!()
 }
-fn connect_to_server(ipAddress: &String, port: &u32) -> ServerContext {
+fn connect_to_server(ip_address: &String, port: &u32) -> ServerContext {
     todo!()
 }
 fn write_to_context(data: Value, context: ServerContext) -> Result<u32, u32> {
