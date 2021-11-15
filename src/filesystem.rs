@@ -26,6 +26,16 @@ pub fn move_file(source: &str, dest: &str, recursive: bool, copy: bool) -> Resul
     todo!()
 }
 
+pub fn copy_file(source: &str, dest: &str) -> Result<u64> {
+    let path = Path::new(dest);
+    let prefix = path.parent().unwrap();
+    match fs::create_dir_all(prefix) {
+        Ok(_x) => (),
+        Err(e) => return Err(e),
+    }
+    fs::copy(source, dest)
+}
+
 pub fn is_directory(path: &str) -> bool {
     Path::new(path).is_dir()
 }

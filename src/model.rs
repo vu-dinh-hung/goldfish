@@ -1,7 +1,12 @@
 use toml::Value;
 use crate::filesystem;
+use std::path::PathBuf;
+use std::fs;
+use std::env;
 
-const GOLDFISH: &str = "./goldfish/state.toml";
+const GOLDFISH: &str = "./goldfish";
+const STATE: &str = "./goldfish/state.toml";
+const STAGING: &str = "./goldfish/staging/";
 
 /* Public Struct */
 
@@ -43,6 +48,15 @@ fn get_list_of_track_files() -> Result<Vec<String>, Error> {
     todo!()
 }
 
+fn map_path_to_snapshot<'a>(path: &'a str, snapshot_path: &'a str) -> String {
+    let mut dir_path = std::env::current_dir().unwrap();
+    let absolute_path = fs::canonicalize(std::path::PathBuf::from(path)).unwrap();
+    let relative_path = absolute_path.to_str().unwrap()[dir_path.to_str().unwrap().chars().count()+1..].to_string();
+    dir_path.push(snapshot_path);
+    dir_path.push(relative_path);
+    return dir_path.to_str().unwrap().to_string();
+}
+
 /* External methods */
 
 /**
@@ -58,7 +72,7 @@ pub fn add_track_file(path: &str) -> Option<Error> {
     }
     // read Goldfish file into goldfish_raw
     let mut goldfish_raw: String;
-    match filesystem::read_file(GOLDFISH) {
+    match filesystem::read_file(STATE) {
         Ok(raw) => goldfish_raw = raw,
         Err(_e) => return Some(Error::FailToLoadGoldfish)
     }
@@ -85,10 +99,16 @@ pub fn add_track_file(path: &str) -> Option<Error> {
         Err(_e) => return Some(Error::SomethingWentWrong)
     }
     // write back to Goldfish file
-    match filesystem::save_file(goldfish_raw.as_str(), GOLDFISH) {
-        Ok(_v) => None,
-        Err(_e) => Some(Error::SomethingWentWrong),
+    match filesystem::save_file(goldfish_raw.as_str(), STATE) {
+        Ok(_v) => (),
+        Err(_e) => return Some(Error::SomethingWentWrong),
     }
+    // copy file to staging
+    match filesystem::copy_file(path, map_path_to_snapshot(path, STAGING).as_str()) {
+        Ok(_v) => (),
+        Err(_e) => return Some(Error::SomethingWentWrong),
+    }
+    return None;
 }
 
 /**
