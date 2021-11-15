@@ -102,9 +102,6 @@ pub fn add_revision(rev_id: &String) -> Option<Error> {
         Err(_e) => return Some(Error::FailToLoadGoldfish)
     }
     // add tracked file
-    if goldfish_state.get("revisions").is_none() {
-        goldfish_state.as_table_mut().unwrap().insert(String::from("revisions"), Value::try_from(Vec::new() as Vec<Value>).unwrap());
-    }
     let cur_rev_id: String;
     match get_current_revision() {
         Ok(rev_id) => cur_rev_id = rev_id,
@@ -113,6 +110,9 @@ pub fn add_revision(rev_id: &String) -> Option<Error> {
     let mut rev: HashMap<String, Value> = HashMap::new();
     rev.insert("id".to_string(), Value::try_from(rev_id).unwrap());
     rev.insert("prev".to_string(), Value::try_from(cur_rev_id).unwrap());
+    if goldfish_state.get("revisions").is_none() {
+        goldfish_state.as_table_mut().unwrap().insert("revisions".to_string(), Value::try_from(Vec::new() as Vec<Value>).unwrap());
+    }
     match goldfish_state["revisions"].as_array_mut() {
         Some(vector) => {
             vector.push(Value::try_from(rev).unwrap());
@@ -120,6 +120,7 @@ pub fn add_revision(rev_id: &String) -> Option<Error> {
         }
         None => return Some(Error::FailToLoadGoldfish)
     }
+    goldfish_state.as_table_mut().unwrap().insert("HEAD".to_string(), Value::try_from(rev_id).unwrap());
     write_state(goldfish_state)
 }
 
