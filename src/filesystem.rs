@@ -6,11 +6,12 @@ use std::fs;
 
 
 pub fn save_file(data: &str, path: &str) -> Result<()> {
-    todo!()
+    return fs::write(path, data);
 }
 
 pub fn read_file(path: &str) -> Result<String> {
-    todo!()
+    let content = fs::read_to_string(path);
+    return content;
 }
 
 pub fn create_directory(path: &str) -> Result<()> {

@@ -1,3 +1,8 @@
+use toml::Value;
+use crate::filesystem;
+
+const GOLDFISH: &str = "./goldfish/state.toml";
+
 /* Public Struct */
 
 // Data structure to interact with a file
@@ -18,7 +23,13 @@ pub enum FileChangeState {
     Add,
 }
 
-pub enum Error {}
+#[derive(Debug)]
+pub enum Error {
+    FailToLoadGoldfish,
+    SomethingWentWrong,
+    NotFile,
+    TrackedFileAlreadyAdded,
+}
 
 /* Internal methods */
 fn diff_virtual_files(vf1: &VirtualFile, vf2: &VirtualFile) -> VirtualFile {
@@ -40,8 +51,44 @@ fn get_list_of_track_files() -> Result<Vec<String>, Error> {
  * @param path: path to file to add
  * @return: Some(Error) if failed, None otherwise
  */
-pub fn add_track_file(path: String) -> Option<Error> {
-    todo!()
+pub fn add_track_file(path: &str) -> Option<Error> {
+    // sanity check 
+    if !filesystem::is_file(path) {
+        return Some(Error::NotFile);
+    }
+    // read Goldfish file into goldfish_raw
+    let mut goldfish_raw: String;
+    match filesystem::read_file(GOLDFISH) {
+        Ok(raw) => goldfish_raw = raw,
+        Err(_e) => return Some(Error::FailToLoadGoldfish)
+    }
+    // deserialize raw 
+    let mut goldfish_info: Value;
+    match toml::from_str(goldfish_raw.as_str()) {
+        Ok(val) => goldfish_info = val,
+        Err(_e) => return Some(Error::FailToLoadGoldfish)
+    }
+    // add tracked file
+    if goldfish_info.get("tracked_file").is_none() {
+        goldfish_info.as_table_mut().unwrap().insert(String::from("tracked_file"), Value::try_from(Vec::new() as Vec<Value>).unwrap());
+    }
+    match goldfish_info["tracked_file"].as_array_mut() {
+        Some(vector) => {
+            vector.push(Value::try_from(path).unwrap());
+            vector.dedup();
+        }
+        None => return Some(Error::FailToLoadGoldfish)
+    }
+    // serialize goldfish
+    match toml::to_string(&goldfish_info) {
+        Ok(s) => goldfish_raw = s,
+        Err(_e) => return Some(Error::SomethingWentWrong)
+    }
+    // write back to Goldfish file
+    match filesystem::save_file(goldfish_raw.as_str(), GOLDFISH) {
+        Ok(_v) => None,
+        Err(_e) => Some(Error::SomethingWentWrong),
+    }
 }
 
 /**
@@ -79,6 +126,7 @@ pub fn get_current_branch() -> Result<String, Error> {
  * @return: Err(Error) if failed, Ok(VirtualFile) otherwise
  */
 pub fn create_virtual_file_from_path(path: String) -> Result<VirtualFile, Error> {
+    // Read file from path
     todo!()
 }
 
