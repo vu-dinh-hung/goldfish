@@ -3,13 +3,16 @@ use crate::model;
 use crate::model::{Repository};
 use crate::utilities;
 use crate::filesystem::*;
+use crate::display::{print_output, print_error};
 use std::path::PathBuf;
+
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
     let current_working_directory = std::env::current_dir().unwrap().into_os_string().into_string().unwrap();
     if Repository::find(current_working_directory.as_str()).is_some() {
-        panic!("Already a DVCS repository");
+        print_error("Already a DVCS folder");
+        return
     }
     match create_dir(join_path(vec![current_working_directory.as_str(), model::DVCS_DIR]).as_str()) {
         Ok(_) => {
@@ -19,12 +22,11 @@ pub fn init() {
                 .expect("Something went wrong creating the `state.toml` file");
             create_dir(join_path(vec![repo.get_dvcs_path(), "staging"]).as_str())
                 .expect("Something went wrong creating the `staging` directory");
-            create_dir(join_path(vec![repo.get_dvcs_path(), "objects"]).as_str())
-                .expect("Something went wrong creating the `objects` directory");
-            create_dir(join_path(vec![repo.get_dvcs_path(), "commits"]).as_str())
-                .expect("Something went wrong creating the `commits` directory");
         },
-        Err(_) => panic!("Something went wrong creating the .dvcs folder")
+        Err(_) => {
+            print_error("Something went wrong creating the .dvcs folder");
+            return
+        }
     }
 }
 

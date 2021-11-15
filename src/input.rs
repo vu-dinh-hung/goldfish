@@ -1,6 +1,7 @@
 
 use crate::controller;
 use crate::display;
+use crate::model;
 /*
     Print welcome message, start receiving input from user and call other functions to process command
     Call PrintError() in display module if we have invalid command name
@@ -11,18 +12,19 @@ use crate::display;
 
 pub fn initialize() {
 
-    
+
     match std::env::args().nth(1){
         Some(x) =>
             match x.as_str(){
             "init" => process_init("init".to_string()),
             "heads" => process_heads("heads".to_string()),
             "cat" => process_cat("cat".to_string()),
+            "add" => process_add("add".to_string()),
             _ => display::print_error("unexpected command"),
             },
         None => display::print_error("Command not given"),
     }
-    
+
 }
 
 
@@ -70,7 +72,9 @@ pub fn process_clone(command: String) {}
     @param command: command received from users
     @return: ! (never return)
 */
-pub fn process_add(command: String) {}
+pub fn process_add(command: String) {
+    model::add_track_file(command.as_str());
+}
 
 /*
     Verify remove command and process by calling method in repository module
@@ -130,7 +134,7 @@ pub fn process_cat(command: String) {
     }else{
         display::print_error("Commit or filename not given");
     }
-   
+
 }
 
 /*
@@ -233,7 +237,7 @@ mod tests {
 
     /*
         @input: "init" command (valid)
-        @expect: method ProcessInit calls method in repository module 
+        @expect: method ProcessInit calls method in repository module
                 to create an empty repository
     */
     #[test]
@@ -271,7 +275,7 @@ mod tests {
 
     /*
         @input: "add [valid file]" command (valid)
-        @expect: method ProcessAdd calls method in repository module 
+        @expect: method ProcessAdd calls method in repository module
                 to add specific files that user want to track
     */
     #[test]
@@ -290,7 +294,7 @@ mod tests {
 
     /*
         @input: "remove [valid file]" command (valid)
-        @expect: method ProcessRemove calls method in repository module 
+        @expect: method ProcessRemove calls method in repository module
                 to remove specific files from tracking list
     */
     #[test]
@@ -309,7 +313,7 @@ mod tests {
 
     /*
         @input: "status" command (valid)
-        @expect: method ProcessStatus calls method in repository module 
+        @expect: method ProcessStatus calls method in repository module
                 to check the current status of current repository
     */
     #[test]
@@ -328,7 +332,7 @@ mod tests {
 
     /*
         @input: "heads" command (valid)
-        @expect: method ProcessHeads calls method in repository module 
+        @expect: method ProcessHeads calls method in repository module
                 to show the current heads
     */
     #[test]
@@ -347,7 +351,7 @@ mod tests {
 
     /*
         @input: "diff [rev1] [rev2]" command (valid)
-        @expect: method ProcessDiff calls method in repository module 
+        @expect: method ProcessDiff calls method in repository module
                 to check the changes between revisions
     */
     #[test]
@@ -366,7 +370,7 @@ mod tests {
 
     /*
         @input: "cat [file]" command (valid)
-        @expect: method ProcessCat calls method in repository module 
+        @expect: method ProcessCat calls method in repository module
                 to inspect a file of a given revision
     */
     #[test]
@@ -385,7 +389,7 @@ mod tests {
 
     /*
         @input: "checkout [rev]" command (valid)
-        @expect: method ProcessCheckout calls method in repository module 
+        @expect: method ProcessCheckout calls method in repository module
                 to check out a specific revision
     */
     #[test]
@@ -404,7 +408,7 @@ mod tests {
 
     /*
         @input: "commit" command (valid)
-        @expect: method ProcessCommit calls method in repository module 
+        @expect: method ProcessCommit calls method in repository module
                 to commit changes and create a new revision
     */
     #[test]
@@ -423,7 +427,7 @@ mod tests {
 
     /*
         @input: "log" command (valid)
-        @expect: method ProcessLog calls method in repository module 
+        @expect: method ProcessLog calls method in repository module
                 to view the change log
     */
     #[test]
@@ -442,7 +446,7 @@ mod tests {
 
     /*
         @input: "merge [rev1] [rev2]" command (valid)
-        @expect: method ProcessMerge calls method in repository module 
+        @expect: method ProcessMerge calls method in repository module
                 to merge two revisions
     */
     #[test]
@@ -461,7 +465,7 @@ mod tests {
 
     /*
         @input: "pull [repo]" command (valid)
-        @expect: method ProcessPull calls method in repository module 
+        @expect: method ProcessPull calls method in repository module
                 to pull the changes from another repository
     */
     #[test]
@@ -480,7 +484,7 @@ mod tests {
 
     /*
         @input: "pull [repo]" command (valid)
-        @expect: method ProcessPush calls method in repository module 
+        @expect: method ProcessPush calls method in repository module
                 to push changes into another repository
     */
     #[test]
