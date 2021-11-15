@@ -18,7 +18,7 @@ pub fn initialize() {
             match x.as_str(){
             "init" => process_init("init".to_string()),
             "heads" => process_heads("heads".to_string()),
-            "cat" => process_cat("cat".to_string()),
+            "commit" => process_commit("commit".to_string()),
             "add" => process_add("add".to_string()),
             _ => display::print_error("unexpected command"),
             },
@@ -73,7 +73,13 @@ pub fn process_clone(command: String) {}
     @return: ! (never return)
 */
 pub fn process_add(command: String) {
-    model::add_track_file(command.as_str());
+    let path = std::env::args().nth(2);
+    if path.is_some(){
+         model::add_track_file(path.unwrap().as_str());
+    }else{
+        display::print_error("Path not given");
+    }
+    
 }
 
 /*
@@ -155,7 +161,9 @@ pub fn process_checkout(command: String) {}
     @param command: command received from users
     @return: ! (never return)
 */
-pub fn process_commit(command: String) {}
+pub fn process_commit(command: String) {
+    controller::commit();
+}
 
 /*
     Verify log command and process by calling method in repository module
