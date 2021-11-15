@@ -18,9 +18,9 @@ pub fn initialize() {
             "init" => process_init("init".to_string()),
             "head" => process_heads("head".to_string()),
             "cat" => process_cat("cat".to_string()),
-            _ => display::print_error("unexpected command".to_string()),
+            _ => display::print_error("unexpected command"),
             },
-        None => display::print_error("Command not given".to_string()),
+        None => display::print_error("Command not given"),
     }
     
 }
@@ -128,7 +128,7 @@ pub fn process_cat(command: String) {
     if commit.is_some() & file.is_some(){
          controller::cat(commit.unwrap(), file.unwrap());
     }else{
-        display::print_error("Commit or filename not given".to_string());
+        display::print_error("Commit or filename not given");
     }
    
 }
