@@ -4,8 +4,8 @@
     @param message: output message sent to user
     @return: ! (never return)
 */
-pub fn print_output(message: String) {
-    todo!()
+pub fn print_output(message: &str) {
+    println!("Result: {}", message);
 }
 
 /*
@@ -14,6 +14,6 @@ pub fn print_output(message: String) {
     @param message: error message sent to user
     @return: ! (never return)
 */
-pub fn print_error(message: String) {
-    todo!()
+pub fn print_error(message: &str) {
+    println!("Error: {}", message);
 }
