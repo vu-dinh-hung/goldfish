@@ -4,6 +4,7 @@ mod utilities;
 mod filesystem;
 mod networking;
 mod input;
+
 mod display;
 
 
@@ -13,4 +14,5 @@ fn main() {
         Some(e) => println!("{:?}", e),
         None => println!("Success"),
     }
+    input::initialize();
 }

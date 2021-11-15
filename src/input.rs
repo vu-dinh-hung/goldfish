@@ -1,10 +1,30 @@
+
+use crate::controller;
+use crate::display;
 /*
     Print welcome message, start receiving input from user and call other functions to process command
     Call PrintError() in display module if we have invalid command name
 
     @return: ! (never return)
 */
-pub fn initialize() {}
+
+
+pub fn initialize() {
+
+    
+    match std::env::args().nth(1){
+        Some(x) =>
+            match x.as_str(){
+            "init" => process_init("init".to_string()),
+            "heads" => process_heads("heads".to_string()),
+            "cat" => process_cat("cat".to_string()),
+            _ => display::print_error("unexpected command"),
+            },
+        None => display::print_error("Command not given"),
+    }
+    
+}
+
 
 /*
     Verify help command and process by calling method in repository module
@@ -16,6 +36,8 @@ pub fn initialize() {}
 */
 pub fn process_help(command: String) {}
 
+
+
 /*
     Verify init command and process by calling method in repository module
     Call PrintError() in display module if we have invalid command
@@ -24,7 +46,11 @@ pub fn process_help(command: String) {}
     @param command: command received from users
     @return: ! (never return)
 */
-pub fn process_init(command: String) {}
+
+pub fn process_init(command: String) {
+    controller::init();
+}
+
 
 /*
     Verify clone command and process by calling method in repository module
@@ -74,7 +100,9 @@ pub fn process_status(command: String) {}
     @param command: command received from users
     @return: ! (never return)
 */
-pub fn process_heads(command: String) {}
+pub fn process_heads(command: String) {
+    controller::heads();
+}
 
 /*
     Verify diff command and process by calling method in repository module
@@ -94,7 +122,16 @@ pub fn process_diff(command: String) {}
     @param command: command received from users
     @return: ! (never return)
 */
-pub fn process_cat(command: String) {}
+pub fn process_cat(command: String) {
+    let commit = std::env::args().nth(2);
+    let file = std::env::args().nth(3);
+    if commit.is_some() & file.is_some(){
+         controller::cat(commit.unwrap(), file.unwrap());
+    }else{
+        display::print_error("Commit or filename not given");
+    }
+   
+}
 
 /*
     Verify checkout command and process by calling method in repository module

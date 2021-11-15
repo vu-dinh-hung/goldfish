@@ -1,11 +1,15 @@
+
+
 /*
     Print output message to terminal
 
     @param message: output message sent to user
     @return: ! (never return)
 */
+
 pub fn print_output(message: &str) {
-    println!("Result: {}", message);
+    println!("{}", message);
+
 }
 
 /*
@@ -14,6 +18,7 @@ pub fn print_output(message: &str) {
     @param message: error message sent to user
     @return: ! (never return)
 */
+
 pub fn print_error(message: &str) {
     println!("Error: {}", message);
 }
@@ -37,4 +42,5 @@ mod tests {
     fn test_print_error_given_message() {
         todo!();
     }
+
 }
