@@ -32,10 +32,6 @@ pub fn remove_file(path: &str, recursive: bool) -> io::Result<()> {
     todo!()
 }
 
-pub fn move_file(source: &str, dest: &str, recursive: bool, copy: bool) -> io::Result<()> {
-    todo!()
-}
-
 pub fn copy_file(source: &str, dest: &str) -> io::Result<u64> {
     let path = Path::new(dest);
     let prefix = path.parent().unwrap();
