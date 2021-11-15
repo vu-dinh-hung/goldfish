@@ -1,7 +1,9 @@
 //! # Controller
+use crate::model;
 use crate::model::{Repository};
-use crate::filesystem;
-
+use crate::utilities;
+use crate::filesystem::*;
+use std::path::PathBuf;
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
@@ -9,17 +11,17 @@ pub fn init() {
     if Repository::find(current_working_directory.as_str()).is_some() {
         panic!("Already a DVCS repository");
     }
-    match filesystem::create_directory(filesystem::join(vec![current_working_directory.as_str(), ".dvcs"]).as_str()) {
+    match create_dir(join_path(vec![current_working_directory.as_str(), model::DVCS_DIR]).as_str()) {
         Ok(_) => {
             assert!(Repository::find(current_working_directory.as_str()).is_some());
             let repo = Repository::find(current_working_directory.as_str()).unwrap();
-            filesystem::write_file("", filesystem::join(vec![repo.get_dvcs_path(), "state.toml"]).as_str())
+            write_file("", join_path(vec![repo.get_dvcs_path(), "state.toml"]).as_str())
                 .expect("Something went wrong creating the `state.toml` file");
-            filesystem::create_directory(filesystem::join(vec![repo.get_dvcs_path(), "staging"]).as_str())
+            create_dir(join_path(vec![repo.get_dvcs_path(), "staging"]).as_str())
                 .expect("Something went wrong creating the `staging` directory");
-            filesystem::create_directory(filesystem::join(vec![repo.get_dvcs_path(), "objects"]).as_str())
+            create_dir(join_path(vec![repo.get_dvcs_path(), "objects"]).as_str())
                 .expect("Something went wrong creating the `objects` directory");
-            filesystem::create_directory(filesystem::join(vec![repo.get_dvcs_path(), "commits"]).as_str())
+            create_dir(join_path(vec![repo.get_dvcs_path(), "commits"]).as_str())
                 .expect("Something went wrong creating the `commits` directory");
         },
         Err(_) => panic!("Something went wrong creating the .dvcs folder")
@@ -32,21 +34,16 @@ pub fn clone(url: String) {
     todo!()
 }
 
-pub fn add(names: Vec<String>) {
-    //! Add the specified file names to the "staging area", which is just a file in
-    //! the .dvcs folder
-    todo!()
-}
-
-pub fn remove(names: Vec<String>) {
-    //! Remove the specified file names from the "staging area"
-    todo!()
-}
-
-pub fn commit() {
-    //! Create a new snapshot (full copy) of the current states of the current directory,
-    //! excluding changed files that are not in the staging area
-    todo!()
+pub fn commit() -> Option<model::Error> {
+    let rev_id = utilities::hash();
+    match model::add_revision(&rev_id) {
+        Some(e) => return Some(e),
+        None => (),
+    }
+    let mut rev_folder = PathBuf::from(model::DVCS_DIR);
+    rev_folder.push(rev_id);
+    copy_dir(model::STAGING, rev_folder).unwrap();
+    return None;
 }
 
 pub fn status() {

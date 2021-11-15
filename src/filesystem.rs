@@ -10,8 +10,8 @@ pub fn write_file(data: &str, path: &str) -> io::Result<()> {
     let parent_folder = parent(path);
     match parent_folder {
         Some(folder) => {
-            if !is_directory(folder.as_str()) {
-                create_directory(folder.as_str())?  // return early with the IO error if this errors out
+            if !is_dir(folder.as_str()) {
+                create_dir(folder.as_str())?  // return early with the IO error if this errors out
             }
             fs::write(path, data)
         }
@@ -24,7 +24,7 @@ pub fn read_file(path: &str) -> io::Result<String> {
     fs::read_to_string(path)
 }
 
-pub fn join(paths: Vec<&str>) -> String {
+pub fn join_path(paths: Vec<&str>) -> String {
     //! Join the paths into a path string (in the format of the host OS)
     //! Currently panics if the conversion from OsString to String (after joining)
     //! fails. This will be fixed to be safer later.
@@ -32,7 +32,7 @@ pub fn join(paths: Vec<&str>) -> String {
         .into_os_string().into_string().unwrap()
 }
 
-pub fn create_directory(path: &str) -> io::Result<()> {
+pub fn create_dir(path: &str) -> io::Result<()> {
     //! Create the given path, including all intermediate directories
     fs::create_dir_all(path)
 }
@@ -41,11 +41,30 @@ pub fn remove_file(path: &str, recursive: bool) -> io::Result<()> {
     todo!()
 }
 
-pub fn move_file(source: &str, dest: &str, recursive: bool, copy: bool) -> io::Result<()> {
-    todo!()
+pub fn copy_file(source: &str, dest: &str) -> io::Result<u64> {
+    let path = Path::new(dest);
+    let prefix = path.parent().unwrap();
+    match fs::create_dir_all(prefix) {
+        Ok(_x) => (),
+        Err(e) => return Err(e),
+    }
+    fs::copy(source, dest)
 }
 
-pub fn is_directory(path: &str) -> bool {
+pub fn copy_dir(source: impl AsRef<Path>, dest: impl AsRef<Path>) -> io::Result<()> {
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let typ = entry.file_type()?;
+        if typ.is_dir() {
+            copy_dir(entry.path(), dest.as_ref().join(entry.file_name()))?;
+        } else {
+            copy_file(entry.path().to_str().unwrap(), dest.as_ref().join(entry.file_name()).to_str().unwrap())?;
+        }
+    }
+    Ok(())
+}
+
+pub fn is_dir(path: &str) -> bool {
     //! Check if path is a directory
     Path::new(path).is_dir()
 }
