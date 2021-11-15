@@ -10,7 +10,7 @@ pub fn diff(lines1: Vec<String>, lines2: Vec<String>) -> Vec<(String, String)> {
     todo!()
 }
 
-pub fn hash() -> String {
+pub fn generate_id() -> String {
     nanoid!(10, &nanoid::alphabet::SAFE)
 }
 

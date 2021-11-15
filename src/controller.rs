@@ -35,7 +35,7 @@ pub fn clone(url: String) {
 }
 
 pub fn commit() -> Option<model::Error> {
-    let rev_id = utilities::hash();
+    let rev_id = utilities::generate_id();
     match model::add_revision(&rev_id) {
         Some(e) => return Some(e),
         None => (),
