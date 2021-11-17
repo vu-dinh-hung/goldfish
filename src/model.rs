@@ -161,7 +161,7 @@ pub fn add_revision(rev_id: &String) -> Option<Error> {
  * @param path: path to file to delete
  * @return: Some(Error) if failed, None otherwise
  */
-pub fn delete_track_file(path: String) -> Option<Error> {
+pub fn delete_track_file(path: &str) -> Option<Error> {
     todo!()
 }
 

@@ -30,7 +30,7 @@ pub fn init() {
     }
 }
 
-pub fn clone(url: String) {
+pub fn clone(url: &str) {
     //! Create a folder with the repo name, download the .dvcs folder from the specified url,
     //! and load the full directory into the folder
     todo!()
@@ -58,13 +58,13 @@ pub fn heads() {
     todo!()
 }
 
-pub fn diff(commit1: String, commit2: String) {
+pub fn diff(commit1: &str, commit2: &str) {
     //! Takes in two commit hashes and use the `display` module to print out the changes
     //! between the two files
     todo!()
 }
 
-pub fn cat(commit: String, file: String) {
+pub fn cat(commit: &str, file: &str) {
     //! Reads a file in the given commit (revision)
     todo!()
 }
@@ -74,13 +74,13 @@ pub fn log() {
     todo!()
 }
 
-pub fn checkout(commit: String) {
+pub fn checkout(commit: &str) {
     //! Edit the commit (branch) name in the HEAD file, and load the full directory of the
     //! commit
     todo!()
 }
 
-pub fn merge(commit: String) {
+pub fn merge(commit: &str) {
     //! Merge the given commit with the current commit. Only works if the current directory
     //! does not have uncommited changes.
     todo!()

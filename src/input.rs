@@ -2,208 +2,297 @@
 use crate::controller;
 use crate::display;
 use crate::model;
+use std::io::{self, Write};
+use regex::Regex;
+use std::process;
+
 /*
     Print welcome message, start receiving input from user and call other functions to process command
-    Call PrintError() in display module if we have invalid command name
-
-    @return: ! (never return)
+    Call print_error() in display module if we have invalid command name
 */
-
-
 pub fn initialize() {
 
+    display::print_welcome();
 
-    match std::env::args().nth(1){
-        Some(x) =>
-            match x.as_str(){
-            "init" => process_init("init".to_string()),
-            "heads" => process_heads("heads".to_string()),
-            "commit" => process_commit("commit".to_string()),
-            "add" => process_add("add".to_string()),
-            _ => display::print_error("unexpected command"),
-            },
-        None => display::print_error("Command not given"),
+    loop {
+        print!("dvcs> ");
+        io::stdout().flush();
+        // read input
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        // process input by removing new line character at the end and spliting to list of args
+        let re_space = Regex::new(r"[ ]+").unwrap();
+        let args = re_space.split(&input[0..input.len() - 1]).collect::<Vec<&str>>();
+        // match input with command
+        if !args.is_empty() {
+            match args[0] {
+                "" => continue,
+                "quit" => process_quit(args),
+                "help" => process_help(args),
+                "init" => process_init(args),
+                "clone" => process_clone(args),
+                "add" => process_add(args),
+                "remove" => process_remove(args),
+                "status" => process_status(args),
+                "heads" => process_heads(args),
+                "diff" => process_diff(args),
+                "cat" => process_cat(args),
+                "checkout" => process_checkout(args),
+                "commit" => process_commit(args),
+                "log" => process_log(args),
+                "merge" => process_merge(args),
+                "pull" => process_pull(args),
+                "push" => process_push(args),
+                _ => display::print_error("Invalid command. Please type help to see our supported commands")
+            }
+        }
     }
+}
 
+/*
+    Verify and process quit command
+    Call print_error() in display module if we have invalid command
+    (invalid number of arguments, invalid argument, etc...)
+
+    @param args: list of arguments from user input
+*/
+pub fn process_quit(args: Vec<&str>) {
+    if args.len() == 1 {
+        process::exit(0);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for quit. Expect 0 but got {}", args.len() - 1));
+    }
 }
 
 
 /*
-    Verify help command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Verify and process help command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_help(command: String) {}
+pub fn process_help(args: Vec<&str>) {
+    if args.len() == 1 {
+        display::print_help();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for help. Expect 0 but got {}", args.len() - 1));
+    }
+}
 
 
 
 /*
     Verify init command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
 
-pub fn process_init(command: String) {
-    controller::init();
+pub fn process_init(args: Vec<&str>) {
+    if args.len() == 1 {
+        controller::init();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for init. Expect 0 but got {}", args.len() - 1));
+    }
 }
 
 
 /*
     Verify clone command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_clone(command: String) {}
-
-/*
-    Verify add command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
-    (invalid number of arguments, invalid argument, etc...)
-
-    @param command: command received from users
-    @return: ! (never return)
-*/
-pub fn process_add(command: String) {
-    let path = std::env::args().nth(2);
-    if path.is_some(){
-         model::add_track_file(path.unwrap().as_str());
-    }else{
-        display::print_error("Path not given");
+pub fn process_clone(args: Vec<&str>) {
+    if args.len() == 2 {
+        controller::clone(args[1]);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for clone. Expect 1 but got {}", args.len() - 1));
     }
-    
 }
 
 /*
-    Verify remove command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Verify add command and process by calling method in model module
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_remove(command: String) {}
+pub fn process_add(args: Vec<&str>) {
+    if args.len() == 2 {
+        model::add_track_file(args[1]);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for add. Expect 1 but got {}", args.len() - 1));
+    }
+}
+
+/*
+    Verify remove command and process by calling method in model module
+    Call print_error() in display module if we have invalid command
+    (invalid number of arguments, invalid argument, etc...)
+
+    @param args: list of arguments from user input
+*/
+pub fn process_remove(args: Vec<&str>) {
+    if args.len() == 2 {
+        model::delete_track_file(args[1]);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for remove. Expect 1 but got {}", args.len() - 1));
+    }
+}
 
 /*
     Verify status command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_status(command: String) {}
+pub fn process_status(args: Vec<&str>) {
+    if args.len() == 1 {
+        controller::status();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for status. Expect 0 but got {}", args.len() - 1));
+    }
+}
 
 /*
     Verify heads command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_heads(command: String) {
-    controller::heads();
+pub fn process_heads(args: Vec<&str>) {
+    if args.len() == 1 {
+        controller::heads();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for heads. Expect 0 but got {}", args.len() - 1));
+    }
 }
 
 /*
     Verify diff command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_diff(command: String) {}
+pub fn process_diff(args: Vec<&str>) {
+    if args.len() == 3 {
+        controller::diff(args[1], args[2]);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for diff. Expect 2 but got {}", args.len() - 1));
+    }
+}
 
 /*
     Verify cat command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_cat(command: String) {
-    let commit = std::env::args().nth(2);
-    let file = std::env::args().nth(3);
-    if commit.is_some() & file.is_some(){
-         controller::cat(commit.unwrap(), file.unwrap());
-    }else{
-        display::print_error("Commit or filename not given");
+pub fn process_cat(args: Vec<&str>) {
+    if args.len() == 3 {
+        controller::cat(args[1], args[2]);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for cat. Expect 2 but got {}", args.len() - 1));
     }
-
 }
 
 /*
     Verify checkout command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_checkout(command: String) {}
+pub fn process_checkout(args: Vec<&str>) {
+    if args.len() == 2 {
+        controller::checkout(args[1]);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for checkout. Expect 1 but got {}", args.len() - 1));
+    }
+}
 
 /*
     Verify commit command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_commit(command: String) {
-    controller::commit();
+pub fn process_commit(args: Vec<&str>) {
+    if args.len() == 1 {
+        controller::commit();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for commit. Expect 0 but got {}", args.len() - 1));
+    }
 }
 
 /*
     Verify log command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_log(command: String) {}
+pub fn process_log(args: Vec<&str>) {
+    if args.len() == 1 {
+        controller::log();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for log. Expect 0 but got {}", args.len() - 1));
+    }
+}
 
 /*
     Verify merge command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_merge(command: String) {}
+pub fn process_merge(args: Vec<&str>) {
+    if args.len() == 2 {
+        controller::merge(args[1]);
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for merge. Expect 1 but got {}", args.len() - 1));
+    }
+}
 
 /*
     Verify pull command and process by calling method in repository module
-    Call PrintError() in display module if we have invalid command
+    Call print_error() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_pull(command: String) {}
+pub fn process_pull(args: Vec<&str>) {
+    if args.len() == 1 {
+        controller::pull();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for pull. Expect 0 but got {}", args.len() - 1));
+    }
+}
 
 /*
     Verify push command and process by calling method in repository module
     Call PrintError() in display module if we have invalid command
     (invalid number of arguments, invalid argument, etc...)
 
-    @param command: command received from users
-    @return: ! (never return)
+    @param args: list of arguments from user input
 */
-pub fn process_push(command: String) {}
+pub fn process_push(args: Vec<&str>) {
+    if args.len() == 1 {
+        controller::push();
+    } else {
+        display::print_error_string(format!("Invalid number of arguments for push. Expect 0 but got {}", args.len() - 1));
+    }
+}
 
 #[cfg(test)]
 mod tests {
