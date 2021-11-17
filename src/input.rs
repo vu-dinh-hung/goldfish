@@ -5,46 +5,66 @@ use crate::model;
 use std::io::{self, Write};
 use regex::Regex;
 use std::process;
+use std::env;
 
 /*
-    Print welcome message, start receiving input from user and call other functions to process command
+    Initialize input module
     Call print_error() in display module if we have invalid command name
 */
 pub fn initialize() {
+    let env_args = env::args().collect::<Vec<String>>();
+    if env_args.len() == 1 {
+        // initialize dvcs terminal to continuously read user input
+        display::print_welcome();
 
-    display::print_welcome();
+        loop {
+            print!("dvcs> ");
+            io::stdout().flush();
+            // read input
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).unwrap();
+            // process input by removing new line character at the end and spliting to list of args
+            let re_space = Regex::new(r"[ ]+").unwrap();
+            let args = re_space.split(&input[0..input.len() - 1]).collect::<Vec<&str>>();
+            // match input with command
+            process_command(args);
+        }
+    } else {
+        // read input directly from user initial command
+        let mut args = env_args.iter().map(|s| s as &str).collect::<Vec<&str>>();
+        // remove executable file arg
+        args.remove(0);
+        process_command(args);
+    }
+}
 
-    loop {
-        print!("dvcs> ");
-        io::stdout().flush();
-        // read input
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        // process input by removing new line character at the end and spliting to list of args
-        let re_space = Regex::new(r"[ ]+").unwrap();
-        let args = re_space.split(&input[0..input.len() - 1]).collect::<Vec<&str>>();
-        // match input with command
-        if !args.is_empty() {
-            match args[0] {
-                "" => continue,
-                "quit" => process_quit(args),
-                "help" => process_help(args),
-                "init" => process_init(args),
-                "clone" => process_clone(args),
-                "add" => process_add(args),
-                "remove" => process_remove(args),
-                "status" => process_status(args),
-                "heads" => process_heads(args),
-                "diff" => process_diff(args),
-                "cat" => process_cat(args),
-                "checkout" => process_checkout(args),
-                "commit" => process_commit(args),
-                "log" => process_log(args),
-                "merge" => process_merge(args),
-                "pull" => process_pull(args),
-                "push" => process_push(args),
-                _ => display::print_error("Invalid command. Please type help to see our supported commands")
-            }
+/*
+    Verify and process user commands
+    Call print_error() in display module if we have invalid command
+
+    @param args: list of arguments from user input
+*/
+pub fn process_command(args: Vec<&str>) {
+    if !args.is_empty() {
+        match args[0] {
+            "" => return,
+            "quit" => process_quit(args),
+            "help" => process_help(args),
+            "init" => process_init(args),
+            "clone" => process_clone(args),
+            "add" => process_add(args),
+            "remove" => process_remove(args),
+            "status" => process_status(args),
+            "heads" => process_heads(args),
+            "diff" => process_diff(args),
+            "cat" => process_cat(args),
+            "checkout" => process_checkout(args),
+            "commit" => process_commit(args),
+            "log" => process_log(args),
+            "merge" => process_merge(args),
+            "pull" => process_pull(args),
+            "push" => process_push(args),
+            _ => display::print_error("Invalid command. Please type help to see our supported commands")
         }
     }
 }
