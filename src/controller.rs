@@ -32,6 +32,7 @@ pub fn init() {
             return
         }
     }
+    print_output("Successfully initialized new repository")
 }
 
 pub fn clone(url: &str) {
