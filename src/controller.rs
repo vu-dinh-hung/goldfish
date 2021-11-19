@@ -14,15 +14,15 @@ pub fn init() {
         print_error("Already a DVCS folder");
         return
     }
-    match create_dir(join_path(vec![current_working_directory.as_str(), model::DVCS_DIR]).as_str()) {
+    match create_dir(join_path(vec![current_working_directory.as_str(), model::DVCS_ROOT_DIR]).as_str()) {
         Ok(_) => {
             assert!(Repository::find(current_working_directory.as_str()).is_some());
             let repo = Repository::find(current_working_directory.as_str()).unwrap();
-            for file in ["HEAD"] {
+            for file in [model::HEAD] {
                 write_file("", join_path(vec![repo.get_dvcs_path(), file]).as_str())
                     .expect(format!("Something went wrong creating the `{}` file", file).as_str());
             }
-            for folder in ["staging", "blobs", "commits", "branches"] {
+            for folder in [model::BLOBS_DIR, model::BRANCHES_DIR, model::COMMITS_DIR, model::STAGING_DIR] {
                 create_dir(join_path(vec![repo.get_dvcs_path(), folder]).as_str())
                     .expect(format!("Something went wrong creating the `{}` directory", folder).as_str());
             }
@@ -46,7 +46,7 @@ pub fn commit() -> Option<model::Error> {
         Some(e) => return Some(e),
         None => (),
     }
-    let mut rev_folder = PathBuf::from(model::DVCS_DIR);
+    let mut rev_folder = PathBuf::from(model::DVCS_ROOT_DIR);
     rev_folder.push(rev_id);
     copy_dir(model::STAGING, rev_folder).unwrap();
     return None;

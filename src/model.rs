@@ -3,7 +3,19 @@ use crate::filesystem;
 use crate::utilities;
 use std::collections::HashMap;
 
-pub const DVCS_DIR: &str = ".goldfish";
+// root
+pub const DVCS_ROOT_DIR: &str = ".goldfish";
+
+// top-level directories
+pub const BLOBS_DIR: &str = "blobs";
+pub const STAGING_DIR: &str = "staging";
+pub const COMMITS_DIR: &str = "commits";
+pub const BRANCHES_DIR: &str = "branches";
+
+// top-level files
+pub const HEAD: &str = "HEAD";
+
+// Loc's old stuff
 const STATE: &str = ".goldfish/state.toml";
 pub const STAGING: &str = ".goldfish/staging/";
 
@@ -22,7 +34,7 @@ impl Repository {
             return None
         }
 
-        let current_dvcs_path = filesystem::join_path(vec![path, DVCS_DIR]);
+        let current_dvcs_path = filesystem::join_path(vec![path, DVCS_ROOT_DIR]);
         if filesystem::is_dir(current_dvcs_path.as_str()) {
             return Some(Repository { working_path: path.to_owned(), dvcs_path: current_dvcs_path })
         }
