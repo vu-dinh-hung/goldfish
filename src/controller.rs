@@ -9,30 +9,33 @@ use std::path::PathBuf;
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
-    let current_working_directory = pathbuf_to_string(std::env::current_dir().unwrap());
-    if Repository::find(current_working_directory.as_str()).is_some() {
-        print_error("Already a DVCS folder");
-        return
-    }
-    match create_dir(join_path(vec![current_working_directory.as_str(), model::DVCS_ROOT_DIR]).as_str()) {
-        Ok(_) => {
-            assert!(Repository::find(current_working_directory.as_str()).is_some());
-            let repo = Repository::find(current_working_directory.as_str()).unwrap();
-            for file in [model::HEAD] {
-                write_file("", join_path(vec![repo.get_repo_path(), file]).as_str())
-                    .expect(format!("Something went wrong creating the `{}` file", file).as_str());
-            }
-            for folder in [model::BLOBS_DIR, model::BRANCHES_DIR, model::COMMITS_DIR, model::STAGING_DIR] {
-                create_dir(join_path(vec![repo.get_repo_path(), folder]).as_str())
-                    .expect(format!("Something went wrong creating the `{}` directory", folder).as_str());
-            }
-        },
-        Err(_) => {
-            print_error("Something went wrong creating the .dvcs folder");
+    match Repository::find(".") {
+        Some(_) => {
+            print_error("Already a DVCS folder");
             return
         }
+        None => {
+            match create_dir(join_path(vec![".", model::DVCS_ROOT_DIR]).as_str()) {
+                Ok(_) => {
+                    assert!(Repository::find(".").is_some());
+                    let repo = Repository::find(".").unwrap();
+                    for file in [model::HEAD] {
+                        write_file("", join_path(vec![repo.get_repo_path(), file]).as_str())
+                            .expect(format!("Something went wrong creating the `{}` file", file).as_str());
+                    }
+                    for folder in [model::BLOBS_DIR, model::BRANCHES_DIR, model::COMMITS_DIR, model::STAGING_DIR] {
+                        create_dir(join_path(vec![repo.get_repo_path(), folder]).as_str())
+                            .expect(format!("Something went wrong creating the `{}` directory", folder).as_str());
+                    }
+                },
+                Err(_) => {
+                    print_error("Something went wrong creating the .dvcs folder");
+                    return
+                }
+            }
+            print_output("Successfully initialized new repository")
+        }
     }
-    print_output("Successfully initialized new repository")
 }
 
 pub fn clone(url: &str) {
@@ -42,39 +45,40 @@ pub fn clone(url: &str) {
 }
 
 pub fn commit() {
-    let repo_find_result = Repository::find(".");
-    if repo_find_result.is_none() {
-        print_error("Not a DVCS folder");
-        return
-    }
-    let repo = repo_find_result.expect("A repo should already be found by this point");
-
-    match list_files(join_path(vec![repo.get_repo_path(), model::STAGING_DIR]).as_str(), true, &vec![]) {
-        Ok(files) => {
-            let mut file_list = vec![];
-            for file_path in files {
-                let file_content = read_file(file_path.as_str()).expect("This file path should be valid");
-                match model::Blob::create(repo.get_repo_path(), file_content.as_str()) {
-                    Ok(blob) => {
-                        file_list.push((file_path.to_string(), blob.get_id().to_string()));
+    match Repository::find(".") {
+        Some(repo) => {
+            match list_files(join_path(vec![repo.get_repo_path(), model::STAGING_DIR]).as_str(), true, &vec![]) {
+                Ok(files) => {
+                    let mut file_list = vec![];
+                    for file_path in files {
+                        let file_content = read_file(file_path.as_str()).expect("This file path should be valid");
+                        match model::Blob::create(repo.get_repo_path(), file_content.as_str()) {
+                            Ok(blob) => {
+                                file_list.push((file_path.to_string(), blob.get_id().to_string()));
+                            }
+                            Err(err) => {
+                                print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
+                                return
+                            }
+                        }
                     }
-                    Err(err) => {
-                        print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
-                        return
+                    match model::Commit::create(repo.get_repo_path(), String::from(""), vec![], file_list) {
+                        Ok(commit) => {
+                            print_output(format!("Created commit: {}", commit.get_id()).as_str())
+                        }
+                        Err(err) => {
+                            print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str());
+                        }
                     }
                 }
-            }
-            match model::Commit::create(repo.get_repo_path(), String::from(""), vec![], file_list) {
-                Ok(commit) => {
-                    print_output(format!("Created commit: {}", commit.get_id()).as_str())
-                }
-                Err(err) => {
-                    print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str());
+                Err(_) => {
+                    print_error("No file is found in staging area. Please `add` files before committing");
+                    return
                 }
             }
         }
-        Err(_) => {
-            print_error("No file is found in staging area. Please `add` files before committing");
+        None => {
+            print_error("Not a DVCS folder");
             return
         }
     }
