@@ -19,11 +19,11 @@ pub fn init() {
             assert!(Repository::find(current_working_directory.as_str()).is_some());
             let repo = Repository::find(current_working_directory.as_str()).unwrap();
             for file in [model::HEAD] {
-                write_file("", join_path(vec![repo.get_dvcs_path(), file]).as_str())
+                write_file("", join_path(vec![repo.get_repo_path(), file]).as_str())
                     .expect(format!("Something went wrong creating the `{}` file", file).as_str());
             }
             for folder in [model::BLOBS_DIR, model::BRANCHES_DIR, model::COMMITS_DIR, model::STAGING_DIR] {
-                create_dir(join_path(vec![repo.get_dvcs_path(), folder]).as_str())
+                create_dir(join_path(vec![repo.get_repo_path(), folder]).as_str())
                     .expect(format!("Something went wrong creating the `{}` directory", folder).as_str());
             }
         },

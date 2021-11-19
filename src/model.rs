@@ -15,6 +15,9 @@ pub const BRANCHES_DIR: &str = "branches";
 // top-level files
 pub const HEAD: &str = "HEAD";
 
+// misc
+pub const DIGEST_SIZE: usize = 256;
+
 // Loc's old stuff
 const STATE: &str = ".goldfish/state.toml";
 pub const STAGING: &str = ".goldfish/staging/";
@@ -23,7 +26,7 @@ pub const STAGING: &str = ".goldfish/staging/";
 #[derive(Debug)]
 pub struct Repository {
     working_path: String,
-    dvcs_path: String,
+    repo_path: String,
 }
 
 impl Repository {
@@ -34,21 +37,73 @@ impl Repository {
             return None
         }
 
-        let current_dvcs_path = filesystem::join_path(vec![path, DVCS_ROOT_DIR]);
-        if filesystem::is_dir(current_dvcs_path.as_str()) {
-            return Some(Repository { working_path: path.to_owned(), dvcs_path: current_dvcs_path })
+        let current_repo_path = filesystem::join_path(vec![path, DVCS_ROOT_DIR]);
+        if filesystem::is_dir(current_repo_path.as_str()) {
+            return Some(Repository { working_path: path.to_owned(), repo_path: current_repo_path })
         }
 
         let parent = filesystem::parent(path)?;  // return None if there is no parent path
         Repository::find(parent.as_str())  // recursively find in parent path
     }
 
-    pub fn get_dvcs_path<'a>(&'a self) -> &'a str {
-        &self.dvcs_path
+    pub fn get_repo_path<'a>(&'a self) -> &'a str {
+        &self.repo_path
     }
 
     pub fn get_working_path<'a>(&'a self) -> &'a str {
         &self.working_path
+    }
+}
+
+#[derive(Debug)]
+pub struct Commit {
+    id: String,
+    direct_parent_id: String,
+    secondary_parent_ids: Vec<String>,
+    path: String,
+}
+
+impl Commit {
+    pub fn load(repo_path: &str, id: &str) -> Option<Commit> {
+        //! Find the commit file at the given path
+        //! and return the Commit object loaded from that commit file
+        let full_path = filesystem::join_path(vec![repo_path, COMMITS_DIR, id]);
+        let content = filesystem::read_file(full_path.as_str()).ok()?;
+        let mut lines = content.split('\n');
+        if lines.nth(0)?.trim() != "commit" {
+            return None
+        }
+        let mut parent = String::from("");
+        let mut secondary_parents = vec![];
+        for line in lines {
+            if line.starts_with("parent") {
+                let current_parent = line.split(" ").nth(1)?.to_string();
+                if parent == "" {
+                    parent = current_parent;
+                } else {
+                    secondary_parents.push(current_parent);
+                }
+            } else {
+                break
+            }
+        }
+        Some(Commit {id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, path: full_path})
+    }
+
+    pub fn get_path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn get_id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn get_direct_parent_id(&self) -> &str {
+        &self.direct_parent_id
+    }
+
+    pub fn get_secondary_parent_ids(&self) -> &Vec<String> {
+        &self.secondary_parent_ids
     }
 }
 
