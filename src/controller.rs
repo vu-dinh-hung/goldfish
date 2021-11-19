@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
-    let current_working_directory = std::env::current_dir().unwrap().into_os_string().into_string().unwrap();
+    let current_working_directory = pathbuf_to_string(std::env::current_dir().unwrap());
     if Repository::find(current_working_directory.as_str()).is_some() {
         print_error("Already a DVCS folder");
         return
@@ -18,10 +18,14 @@ pub fn init() {
         Ok(_) => {
             assert!(Repository::find(current_working_directory.as_str()).is_some());
             let repo = Repository::find(current_working_directory.as_str()).unwrap();
-            write_file("", join_path(vec![repo.get_dvcs_path(), "state.toml"]).as_str())
-                .expect("Something went wrong creating the `state.toml` file");
-            create_dir(join_path(vec![repo.get_dvcs_path(), "staging"]).as_str())
-                .expect("Something went wrong creating the `staging` directory");
+            for file in ["HEAD"] {
+                write_file("", join_path(vec![repo.get_dvcs_path(), file]).as_str())
+                    .expect(format!("Something went wrong creating the `{}` file", file).as_str());
+            }
+            for folder in ["staging", "blobs", "commits", "branches"] {
+                create_dir(join_path(vec![repo.get_dvcs_path(), folder]).as_str())
+                    .expect(format!("Something went wrong creating the `{}` directory", folder).as_str());
+            }
         },
         Err(_) => {
             print_error("Something went wrong creating the .dvcs folder");
