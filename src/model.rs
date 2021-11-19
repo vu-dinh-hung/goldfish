@@ -41,7 +41,7 @@ impl Repository {
 }
 
 // Data structure to interact with a file
-pub struct VirtualFile {}
+pub struct Blob {}
 
 /* Public Enum */
 pub enum LineChangeState {
@@ -63,14 +63,15 @@ pub enum Error {
     TrackedFileAlreadyAdded,
 }
 
-/* Internal methods */
-fn diff_virtual_files(vf1: &VirtualFile, vf2: &VirtualFile) -> VirtualFile {
+/* Internal functions */
+fn diff_blobs(vf1: &Blob, vf2: &Blob) -> Option<Blob> {
     todo!()
 }
 
-fn merge_virtual_files(vf1: &VirtualFile, vf2: &VirtualFile) -> VirtualFile {
+fn merge_blobs(vf1: &Blob, vf2: &Blob) -> Blob {
     todo!()
 }
+
 fn get_list_of_track_files() -> Result<Vec<String>, Error> {
     todo!()
 }
@@ -200,7 +201,7 @@ pub fn get_current_branch() -> Result<String, Error> {
  * @param path: path to file
  * @return: Err(Error) if failed, Ok(VirtualFile) otherwise
  */
-pub fn create_virtual_file_from_path(path: String) -> Result<VirtualFile, Error> {
+pub fn create_virtual_file_from_path(path: String) -> Result<Blob, Error> {
     // Read file from path
     todo!()
 }
@@ -212,7 +213,7 @@ pub fn create_virtual_file_from_path(path: String) -> Result<VirtualFile, Error>
  * @param rev: revision of the file
  * @return: Err(Error) if failed, Ok(VirtualFile) otherwise
  */
-pub fn create_virtual_file_from_revision_path(path: String, rev_id: String) -> Result<VirtualFile, Error> {
+pub fn create_virtual_file_from_revision_path(path: String, rev_id: String) -> Result<Blob, Error> {
     todo!()
 }
 
