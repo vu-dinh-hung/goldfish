@@ -166,8 +166,56 @@ impl Commit {
     }
 }
 
-// Data structure to interact with a file
-pub struct Blob {}
+/**
+ * A blob is a file whose name is the hash of its MAIN CONTENT
+ * Format:
+ * ```
+ * blob\n
+ * {{ MAIN CONTENT }}
+ * ```
+ */
+pub struct Blob {
+    id: String,
+    path: String,
+}
+
+impl Blob {
+    pub fn create(repo_path: &str, blob_data: &str) -> io::Result<Blob> {
+        //! Write a new blob file with the given content
+        let mut content = format!("blob\n{}", blob_data);
+        let blob_id = utilities::hash(blob_data);
+        let blob_path = filesystem::join_path(vec![repo_path, BLOBS_DIR, blob_id.as_str()]);
+        filesystem::write_file(content.as_str(), blob_path.as_str())?;
+        Ok(Blob { id: blob_id, path: blob_path })
+    }
+
+    pub fn get(repo_path: &str, id: &str) -> Option<Blob> {
+        //! Find a blob at the given path
+        let full_path = filesystem::join_path(vec![repo_path, BLOBS_DIR, id]);
+        let content = filesystem::read_file(full_path.as_str()).ok()?;
+        let mut lines = content.split("\n");
+        if lines.nth(0)?.trim() != "blob" {
+            return None
+        }
+
+        Some(Blob { id: id.to_string(), path: full_path })
+    }
+
+    pub fn get_blob_content(&self) -> io::Result<String> {
+        //! Read the main content of the blob
+        let content = filesystem::read_file(&self.path.as_str())?;
+        let lines = content.split("\n");
+        Ok(lines.skip(1).map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))
+    }
+
+    pub fn get_id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn get_path(&self) -> &str {
+        &self.path
+    }
+}
 
 /* Public Enum */
 pub enum LineChangeState {
@@ -253,34 +301,34 @@ pub fn add_track_file(path: &str) -> Option<Error> {
     return None;
 }
 
-pub fn add_revision(rev_id: &String) -> Option<Error> {
-    let mut goldfish_state: Value;
-    match read_state() {
-        Ok(state) => goldfish_state = state,
-        Err(_e) => return Some(Error::FailToLoadGoldfish)
-    }
-    // add tracked file
-    let cur_rev_id: String;
-    match get_current_revision() {
-        Ok(rev_id) => cur_rev_id = rev_id,
-        Err(e) => return Some(e),
-    }
-    let mut rev: HashMap<String, Value> = HashMap::new();
-    rev.insert("id".to_string(), Value::try_from(rev_id).unwrap());
-    rev.insert("prev".to_string(), Value::try_from(cur_rev_id).unwrap());
-    if goldfish_state.get("revisions").is_none() {
-        goldfish_state.as_table_mut().unwrap().insert("revisions".to_string(), Value::try_from(Vec::new() as Vec<Value>).unwrap());
-    }
-    match goldfish_state["revisions"].as_array_mut() {
-        Some(vector) => {
-            vector.push(Value::try_from(rev).unwrap());
-            vector.dedup();
-        }
-        None => return Some(Error::FailToLoadGoldfish)
-    }
-    goldfish_state.as_table_mut().unwrap().insert("HEAD".to_string(), Value::try_from(rev_id).unwrap());
-    write_state(goldfish_state)
-}
+// pub fn add_revision(rev_id: &String) -> Option<Error> {
+//     let mut goldfish_state: Value;
+//     match read_state() {
+//         Ok(state) => goldfish_state = state,
+//         Err(_e) => return Some(Error::FailToLoadGoldfish)
+//     }
+//     // add tracked file
+//     let cur_rev_id: String;
+//     match get_current_revision() {
+//         Ok(rev_id) => cur_rev_id = rev_id,
+//         Err(e) => return Some(e),
+//     }
+//     let mut rev: HashMap<String, Value> = HashMap::new();
+//     rev.insert("id".to_string(), Value::try_from(rev_id).unwrap());
+//     rev.insert("prev".to_string(), Value::try_from(cur_rev_id).unwrap());
+//     if goldfish_state.get("revisions").is_none() {
+//         goldfish_state.as_table_mut().unwrap().insert("revisions".to_string(), Value::try_from(Vec::new() as Vec<Value>).unwrap());
+//     }
+//     match goldfish_state["revisions"].as_array_mut() {
+//         Some(vector) => {
+//             vector.push(Value::try_from(rev).unwrap());
+//             vector.dedup();
+//         }
+//         None => return Some(Error::FailToLoadGoldfish)
+//     }
+//     goldfish_state.as_table_mut().unwrap().insert("HEAD".to_string(), Value::try_from(rev_id).unwrap());
+//     write_state(goldfish_state)
+// }
 
 /**
  * Delete a file to track list, use FileSystem to update tracking list file
