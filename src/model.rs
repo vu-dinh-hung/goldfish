@@ -2,6 +2,7 @@ use toml::Value;
 use crate::filesystem;
 use crate::utilities;
 use std::collections::HashMap;
+use std::io;
 
 // root
 pub const DVCS_ROOT_DIR: &str = ".goldfish";
@@ -55,6 +56,17 @@ impl Repository {
     }
 }
 
+/**
+ * This is an interface for interacting with commit files. Commit files' filename is
+ * the hash digest of their file content, and they have the following format:
+ * ```
+ * commit\n
+ * parent {direct_parent_id}\n
+ * {{ zero or more lines of `parent {parent_id}\n' for any other (merged) parents` }}
+ * file {file_path} {blob_id}\n
+ * {{ more file lines if necessary }}
+ * ```
+ */
 #[derive(Debug)]
 pub struct Commit {
     id: String,
@@ -64,7 +76,33 @@ pub struct Commit {
 }
 
 impl Commit {
-    pub fn load(repo_path: &str, id: &str) -> Option<Commit> {
+    pub fn create(repo_path: &str, direct_parent_id: String, secondary_parent_ids: Vec<String>, file_list: Vec<(String, String)>) -> io::Result<Commit> {
+        // TODO: assert non-empty file_list; a commit cannot have no files
+
+        let mut content = format!("commit\nparent {}\n", direct_parent_id);
+
+        // write secondary parents
+        for parent in secondary_parent_ids.iter() {
+            content = format!("{}parent {}\n", content, parent);
+        }
+
+        // write file list
+        for (file_path, blob_id) in file_list.iter() {
+            content = format!("{}file {} {}\n", content, file_path, blob_id);
+        }
+        let commit_id = utilities::hash(content.as_str());
+        let commit_path = filesystem::join_path(vec![repo_path, COMMITS_DIR, commit_id.as_str()]);
+        filesystem::write_file(content.as_str(), commit_path.as_str())?;
+
+        Ok(Commit {
+            id: commit_id,
+            direct_parent_id: direct_parent_id,
+            secondary_parent_ids: secondary_parent_ids,
+            path: commit_path
+        })
+    }
+
+    pub fn get(repo_path: &str, id: &str) -> Option<Commit> {
         //! Find the commit file at the given path
         //! and return the Commit object loaded from that commit file
         let full_path = filesystem::join_path(vec![repo_path, COMMITS_DIR, id]);
@@ -87,7 +125,28 @@ impl Commit {
                 break
             }
         }
-        Some(Commit {id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, path: full_path})
+        Some(Commit { id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, path: full_path })
+    }
+
+    pub fn load_file_list(&self) -> Option<Vec<(String, String)>> {
+        //! Load all the file entries in the commit file
+        let mut result = vec![];
+        let content = filesystem::read_file(self.path.as_str()).ok()?;
+        let lines = content.split('\n');
+        for line in lines {
+            if line.starts_with("file") {
+                let file_path = line.split(' ').nth(0)?;
+                let blob_id = line.split(' ').nth(1)?;
+                result.push((file_path.to_string(), blob_id.to_string()));
+            }
+        }
+
+        // There should be at least one file present for a commit, otherwise this is a defective commit file
+        if result.is_empty() {
+            return None
+        }
+
+        Some(result)
     }
 
     pub fn get_path(&self) -> &str {
