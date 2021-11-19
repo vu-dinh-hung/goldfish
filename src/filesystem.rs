@@ -1,8 +1,38 @@
 //! Filesystem
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
 
+
+pub fn pathbuf_to_string(path: PathBuf) -> String {
+    //! Unsafe function (but mostly safe practically) to convert a PathBuf object into a String
+    path.into_os_string().into_string().unwrap()
+}
+
+pub fn list_files(path: &str, recursive: bool, exclude: &Vec<&str>) -> io::Result<Vec<String>> {
+    //! List all files in the given directory. Returns an IO error if given invalid path(s)
+    let mut result = vec![];
+    'main_loop: for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let cur_path = pathbuf_to_string(entry.path());
+
+        for ex in exclude.iter() {
+            if canonicalize(cur_path.as_str())? == canonicalize(ex)? {
+                continue 'main_loop;
+            }
+        }
+
+        if is_dir(cur_path.as_str()) {
+            if recursive {
+                let mut inner_files = list_files(cur_path.as_str(), true, exclude)?;
+                result.append(&mut inner_files);
+            };
+        } else {
+            result.push(cur_path);
+        }
+    }
+    Ok(result)
+}
 
 pub fn write_file(data: &str, path: &str) -> io::Result<()> {
     //! Write data to the specified file
@@ -77,4 +107,9 @@ pub fn is_file(path: &str) -> bool {
 pub fn parent(path: &str) -> Option<String> {
     //! Get the parent path of the given path
     Path::new(path).parent()?.to_str().map(|path_string| path_string.to_string())
+}
+
+pub fn canonicalize(path: &str) -> io::Result<String> {
+    //! Return the full canonical path for the given path
+    fs::canonicalize(Path::new(path)).map(pathbuf_to_string)
 }
