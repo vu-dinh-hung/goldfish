@@ -41,16 +41,43 @@ pub fn clone(url: &str) {
     todo!()
 }
 
-pub fn commit() -> Option<model::Error> {
-    let rev_id = utilities::generate_id();
-    match model::add_revision(&rev_id) {
-        Some(e) => return Some(e),
-        None => (),
+pub fn commit() {
+    let repo_find_result = Repository::find(".");
+    if repo_find_result.is_none() {
+        print_error("Not a DVCS folder");
+        return
     }
-    let mut rev_folder = PathBuf::from(model::DVCS_ROOT_DIR);
-    rev_folder.push(rev_id);
-    copy_dir(model::STAGING, rev_folder).unwrap();
-    return None;
+    let repo = repo_find_result.expect("A repo should already be found by this point");
+
+    match list_files(join_path(vec![repo.get_repo_path(), model::STAGING_DIR]).as_str(), true, &vec![]) {
+        Ok(files) => {
+            let mut file_list = vec![];
+            for file_path in files {
+                let file_content = read_file(file_path.as_str()).expect("This file path should be valid");
+                match model::Blob::create(repo.get_repo_path(), file_content.as_str()) {
+                    Ok(blob) => {
+                        file_list.push((file_path.to_string(), blob.get_id().to_string()));
+                    }
+                    Err(err) => {
+                        print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
+                        return
+                    }
+                }
+            }
+            match model::Commit::create(repo.get_repo_path(), String::from(""), vec![], file_list) {
+                Ok(commit) => {
+                    print_output(format!("Created commit: {}", commit.get_id()).as_str())
+                }
+                Err(err) => {
+                    print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str());
+                }
+            }
+        }
+        Err(_) => {
+            print_error("No file is found in staging area. Please `add` files before committing");
+            return
+        }
+    }
 }
 
 pub fn status() {
