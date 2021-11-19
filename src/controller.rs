@@ -1,6 +1,6 @@
 //! # Controller
 use crate::model;
-use crate::model::{Repository};
+use crate::model::{Repository, Blob, Commit};
 use crate::utilities;
 use crate::filesystem::*;
 use crate::display::{print_output, print_error};
@@ -47,32 +47,29 @@ pub fn clone(url: &str) {
 pub fn commit() {
     match Repository::find(".") {
         Some(repo) => {
+            // list files in staging area
             match list_files(join_path(vec![repo.get_repo_path(), model::STAGING_DIR]).as_str(), true, &vec![]) {
                 Ok(files) => {
                     let mut file_list = vec![];
+                    // create blobs
                     for file_path in files {
                         let file_content = read_file(file_path.as_str()).expect("This file path should be valid");
-                        match model::Blob::create(repo.get_repo_path(), file_content.as_str()) {
-                            Ok(blob) => {
-                                file_list.push((file_path.to_string(), blob.get_id().to_string()));
-                            }
+                        match Blob::create(repo.get_repo_path(), file_content.as_str()) {
+                            Ok(blob) => file_list.push((file_path.to_string(), blob.get_id().to_string())),
                             Err(err) => {
                                 print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
                                 return
                             }
                         }
                     }
-                    match model::Commit::create(repo.get_repo_path(), String::from(""), vec![], file_list) {
-                        Ok(commit) => {
-                            print_output(format!("Created commit: {}", commit.get_id()).as_str())
-                        }
-                        Err(err) => {
-                            print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str());
-                        }
+                    // create commit
+                    match Commit::create(repo.get_repo_path(), String::from(""), vec![], file_list) {
+                        Ok(commit) => print_output(format!("Created commit: {}", commit.get_id()).as_str()),
+                        Err(err) => print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str())
                     }
                 }
                 Err(_) => {
-                    print_error("No file is found in staging area. Please `add` files before committing");
+                    print_error("No file found in staging area. Please `add` files before committing");
                     return
                 }
             }
