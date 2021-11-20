@@ -105,8 +105,34 @@ pub fn cat(commit: &str, file: &str) {
 }
 
 pub fn log() {
-    //! Use the `display` module
-    todo!()
+    //! Print the ancestors of the current commit
+    fn print_ancestor(repo: &Repository, commit_id: &str) {
+        //! Print the current commit, then recursively print the ancestor of this commit
+        if commit_id == "" {
+            return
+        }
+
+        match Commit::get(repo, commit_id) {
+            Some(commit) => {
+                print_output(format!("---\n{}", commit.pretty_print()).as_str());
+                print_ancestor(repo, commit.get_direct_parent_id());
+            }
+            None => print_error(format!("Invalid commit id: {}", commit_id).as_str())
+        }
+    }
+
+    match Repository::find(".") {
+        Some(repo) => {
+            match repo.get_current_commit_id() {
+                Ok(head_commit_id) => {
+                    print_output("History:");
+                    print_ancestor(&repo, head_commit_id.as_str());
+                }
+                Err(err) => print_error(format!("Something went wrong reading the current commit id:\n{}", err).as_str())
+            }
+        }
+        None => print_error("Not a DVCS folder")
+    }
 }
 
 pub fn checkout(commit: &str) {

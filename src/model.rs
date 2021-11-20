@@ -134,10 +134,10 @@ impl Commit {
         })
     }
 
-    pub fn get(repo_path: &str, id: &str) -> Option<Commit> {
+    pub fn get(repo: &Repository, id: &str) -> Option<Commit> {
         //! Find the commit file at the given path
         //! and return the Commit object loaded from that commit file
-        let full_path = filesystem::join_path(vec![repo_path, COMMITS_DIR, id]);
+        let full_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), id]);
         let content = filesystem::read_file(full_path.as_str()).ok()?;
         let mut lines = content.split('\n');
         if lines.nth(0)?.trim() != "commit" {
@@ -179,6 +179,10 @@ impl Commit {
         }
 
         Some(result)
+    }
+
+    pub fn pretty_print(&self) -> String {
+        format!("Commit: {}", &self.id)
     }
 
     pub fn get_path(&self) -> &str {
