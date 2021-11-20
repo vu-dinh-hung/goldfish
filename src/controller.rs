@@ -1,4 +1,5 @@
 //! # Controller
+use std::path::Path;
 use crate::model;
 use crate::model::{Repository, Blob, Commit};
 use crate::utilities;
@@ -66,7 +67,10 @@ pub fn commit() {
                     match repo.get_current_commit_id() {
                         Ok(current_commit_id) => {
                             match Commit::create(&repo, current_commit_id, vec![], file_list) {
-                                Ok(commit) => print_output(format!("Created commit: {}", commit.get_id()).as_str()),
+                                Ok(commit) => {
+                                    print_output(format!("Created commit: {}", commit.get_id()).as_str());
+                                    repo.clean_staging();
+                                }
                                 Err(err) => print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str())
                             }
                         }
@@ -93,7 +97,15 @@ pub fn status() {
 
 pub fn heads() {
     //! Print out the current HEAD and the branch name of that HEAD, taken from the .dvcs folder
-    todo!()
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            match repo.read_HEAD() {
+                Ok(head) => print_output(format!("At commit {}", head).as_str()),
+                Err(e) => print_error(e.as_str()),
+            }
+        }
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
 pub fn diff(commit1: &str, commit2: &str) {
@@ -213,6 +225,59 @@ pub fn pull() {
 pub fn set_remote() {
     //! Sets the remote links for pull and push
     todo!()
+}
+
+pub fn add_track_file(path: &str) {
+    // sanity check
+    if !is_file(path) && !is_dir(path) {
+        print_error(format!("{} did not match any file or folder", path).as_str());
+        return;
+    }
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            let abs_path = pathbuf_to_string(get_absolute_path(path));
+            let rel_path = diff_path(repo.get_working_path(), abs_path.as_str()).unwrap();
+            match copy(
+                abs_path.as_str(), 
+                Path::new(repo.get_staging_path().as_str())
+                    .join(rel_path)
+                    .to_str()
+                    .unwrap()) {
+
+                Ok(_v) => (),
+                Err(_e) => {
+                    print_error(format!("Fail to add {}", path).as_str());
+                    return;
+                },
+            }
+        },
+        None => print_error("Not a Goldfish folder")
+    }
+}
+
+pub fn delete_track_file(path: &str) {
+    // sanity check
+    if !is_file(path) && !is_dir(path) {
+        print_error(format!("{} did not match any file or folder", path).as_str());
+        return;
+    }
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            let abs_path = pathbuf_to_string(get_absolute_path(path));
+            let rel_path = diff_path(repo.get_working_path(), abs_path.as_str()).unwrap();
+            match remove(Path::new(repo.get_staging_path().as_str())
+                            .join(rel_path)
+                            .to_str()
+                            .unwrap()) {
+                Ok(_v) => (),
+                Err(_e) => {
+                    print_error(format!("Fail to remove {}", path).as_str());
+                    return;
+                },
+            }
+        },
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
 #[cfg(test)]

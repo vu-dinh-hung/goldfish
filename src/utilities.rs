@@ -21,15 +21,6 @@ pub fn generate_id() -> String {
     nanoid!(10, &nanoid::alphabet::SAFE)
 }
 
-pub fn map_path_to_snapshot<'a>(path: &'a str, snapshot_path: &'a str) -> String {
-    let mut dir_path = env::current_dir().unwrap();
-    let absolute_path = fs::canonicalize(PathBuf::from(path)).unwrap();
-    let relative_path = absolute_path.to_str().unwrap()[dir_path.to_str().unwrap().chars().count()+1..].to_string();
-    dir_path.push(snapshot_path);
-    dir_path.push(relative_path);
-    return dir_path.to_str().unwrap().to_string();
-}
-
 
 #[cfg(test)]
 mod tests {

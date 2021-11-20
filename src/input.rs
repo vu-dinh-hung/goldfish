@@ -1,7 +1,6 @@
 
 use crate::controller;
 use crate::display;
-use crate::model;
 use std::io::{self, Write};
 use regex::Regex;
 use std::process;
@@ -143,7 +142,7 @@ pub fn process_clone(args: Vec<&str>) {
 */
 pub fn process_add(args: Vec<&str>) {
     if args.len() == 2 {
-        model::add_track_file(args[1]);
+        controller::add_track_file(args[1]);
     } else {
         display::print_error_string(format!("Invalid number of arguments for add. Expect 1 but got {}", args.len() - 1));
     }
@@ -158,7 +157,7 @@ pub fn process_add(args: Vec<&str>) {
 */
 pub fn process_remove(args: Vec<&str>) {
     if args.len() == 2 {
-        model::delete_track_file(args[1]);
+        controller::delete_track_file(args[1]);
     } else {
         display::print_error_string(format!("Invalid number of arguments for remove. Expect 1 but got {}", args.len() - 1));
     }

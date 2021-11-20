@@ -10,6 +10,10 @@ pub fn pathbuf_to_string(path: PathBuf) -> String {
     path.into_os_string().into_string().unwrap()
 }
 
+pub fn get_absolute_path(path: &str) -> PathBuf {
+    return fs::canonicalize(path).unwrap();
+}
+
 pub fn diff_path(base: &str, path: &str) -> Option<String> {
     pathdiff::diff_paths(Path::new(path), Path::new(base)).map(|pb| pathbuf_to_string(pb))
 }
@@ -86,27 +90,34 @@ pub fn list(path: &str) -> io::Result<Vec<String>> {
     fs::read_dir(path).map(|iterator| iterator.map(|dir_entry_result| pathbuf_to_string(dir_entry_result.unwrap().path())).collect())
 }
 
-pub fn copy_file(source: &str, dest: &str) -> io::Result<u64> {
-    let path = Path::new(dest);
-    let prefix = path.parent().unwrap();
-    match fs::create_dir_all(prefix) {
-        Ok(_x) => (),
-        Err(e) => return Err(e),
-    }
-    fs::copy(source, dest)
-}
-
-pub fn copy_dir(source: impl AsRef<Path>, dest: impl AsRef<Path>) -> io::Result<()> {
-    for entry in fs::read_dir(source)? {
-        let entry = entry?;
-        let typ = entry.file_type()?;
-        if typ.is_dir() {
-            copy_dir(entry.path(), dest.as_ref().join(entry.file_name()))?;
-        } else {
-            copy_file(entry.path().to_str().unwrap(), dest.as_ref().join(entry.file_name()).to_str().unwrap())?;
+pub fn copy(source: &str, dest: &str) -> io::Result<()> {
+    if is_dir(source) {
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            match copy(
+                entry.path().to_str().unwrap(), 
+                Path::new(dest)
+                    .join(entry.file_name())
+                    .to_str()
+                    .unwrap()
+            ) {
+                Ok(_x) => (),
+                Err(e) => return Err(e),
+            }
         }
+        Ok(())
+    } else if is_file(source) {
+        let path = Path::new(dest);
+        let prefix = path.parent().unwrap();
+        match fs::create_dir_all(prefix) {
+            Ok(_x) => (),
+            Err(e) => return Err(e),
+        }
+        fs::copy(source, dest)?;
+        Ok(())
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, "Invalid path"))
     }
-    Ok(())
 }
 
 pub fn is_dir(path: &str) -> bool {
