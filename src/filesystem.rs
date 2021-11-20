@@ -2,11 +2,16 @@
 use std::io;
 use std::path::{Path, PathBuf};
 use std::fs;
+use pathdiff;
 
 
 pub fn pathbuf_to_string(path: PathBuf) -> String {
     //! Unsafe function (but mostly safe practically) to convert a PathBuf object into a String
     path.into_os_string().into_string().unwrap()
+}
+
+pub fn diff_path(base: &str, path: &str) -> Option<String> {
+    pathdiff::diff_paths(Path::new(path), Path::new(base)).map(|pb| pathbuf_to_string(pb))
 }
 
 pub fn list_files(path: &str, recursive: bool, exclude: &Vec<&str>) -> io::Result<Vec<String>> {
@@ -67,8 +72,18 @@ pub fn create_dir(path: &str) -> io::Result<()> {
     fs::create_dir_all(path)
 }
 
-pub fn remove_file(path: &str, recursive: bool) -> io::Result<()> {
-    todo!()
+pub fn remove(path: &str) -> io::Result<()> {
+    if is_dir(path) {
+        fs::remove_dir_all(path)
+    } else if is_file(path) {
+        fs::remove_file(path)
+    } else {
+        Err(io::Error::new(io::ErrorKind::Other, "Invalid path"))
+    }
+}
+
+pub fn list(path: &str) -> io::Result<Vec<String>> {
+    fs::read_dir(path).map(|iterator| iterator.map(|dir_entry_result| pathbuf_to_string(dir_entry_result.unwrap().path())).collect())
 }
 
 pub fn copy_file(source: &str, dest: &str) -> io::Result<u64> {

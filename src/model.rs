@@ -167,8 +167,8 @@ impl Commit {
         let lines = content.split('\n');
         for line in lines {
             if line.starts_with("file") {
-                let file_path = line.split(' ').nth(0)?;
-                let blob_id = line.split(' ').nth(1)?;
+                let file_path = line.split(' ').nth(1)?;
+                let blob_id = line.split(' ').nth(2)?;
                 result.push((file_path.to_string(), blob_id.to_string()));
             }
         }
@@ -210,7 +210,8 @@ impl Commit {
  * {{ MAIN CONTENT }}
  * ```
  */
-pub struct Blob {
+#[derive(Debug)]
+ pub struct Blob {
     id: String,
     path: String,
 }

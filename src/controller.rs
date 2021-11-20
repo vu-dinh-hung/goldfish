@@ -9,12 +9,13 @@ use std::path::PathBuf;
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
-    match Repository::find(".") {
+    let current_directory = pathbuf_to_string(std::env::current_dir().unwrap());
+    match Repository::find(current_directory.as_str()) {
         None => {
-            match create_dir(join_path(vec![".", model::DVCS_ROOT_DIR]).as_str()) {
+            match create_dir(join_path(vec![current_directory.as_str(), model::DVCS_ROOT_DIR]).as_str()) {
                 Ok(_) => {
-                    assert!(Repository::find(".").is_some());
-                    let repo = Repository::find(".").unwrap();
+                    assert!(Repository::find(current_directory.as_str()).is_some());
+                    let repo = Repository::find(current_directory.as_str()).unwrap();
                     for file in [model::HEAD] {
                         write_file("", join_path(vec![repo.get_repo_path(), file]).as_str())
                             .expect(format!("Something went wrong creating the `{}` file", file).as_str());
@@ -42,7 +43,7 @@ pub fn clone(url: &str) {
 }
 
 pub fn commit() {
-    match Repository::find(".") {
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
             // list files in staging area
             match list_files(repo.get_staging_path().as_str(), true, &vec![]) {
@@ -52,7 +53,9 @@ pub fn commit() {
                     for file_path in files {
                         let file_content = read_file(file_path.as_str()).expect("This file path should be valid");
                         match Blob::create(&repo, file_content.as_str()) {
-                            Ok(blob) => file_list.push((file_path.to_string(), blob.get_id().to_string())),
+                            Ok(blob) => {
+                                file_list.push((diff_path(repo.get_staging_path().as_str(), file_path.as_str()).unwrap(), blob.get_id().to_string()))
+                            },
                             Err(err) => {
                                 print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
                                 return
@@ -121,7 +124,7 @@ pub fn log() {
         }
     }
 
-    match Repository::find(".") {
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
             match repo.get_current_commit_id() {
                 Ok(head_commit_id) => {
@@ -135,10 +138,58 @@ pub fn log() {
     }
 }
 
-pub fn checkout(commit: &str) {
-    //! Edit the commit (branch) name in the HEAD file, and load the full directory of the
-    //! commit
-    todo!()
+pub fn checkout(commit_id: &str) {
+    //! Edit the commit (branch) name in the HEAD file, and load the full directory of the commit
+    // TODO: catch all errors
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            // get the Commit associated with the given commit_id
+            match Commit::get(&repo, commit_id) {
+                Some(commit) => {
+                    // load all the files of that commit
+                    match commit.load_file_list() {
+                        Some(file_list) => {
+                            // remove old files
+                            match list(repo.get_working_path()) {
+                                Ok(entry_list) => {
+                                    for entry in entry_list {
+                                        if canonicalize(entry.as_str()).unwrap() == canonicalize(repo.get_repo_path()).unwrap() {
+                                            continue
+                                        }
+                                        remove(entry.as_str());
+                                    }
+                                }
+                                Err(err) => {
+                                    print_error(format!("Something went wrong deleting the current files:\n{}", err).as_str());
+                                    return
+                                }
+                            }
+                            // populate the staging area with the files of the commit
+                            for (file_path, blob_id) in file_list {
+                                match Blob::get(&repo, blob_id.as_str()) {
+                                    Some(blob) => {
+                                        write_file(
+                                            blob.get_blob_content().unwrap().as_str(),
+                                            join_path(vec![repo.get_staging_path().as_str(), file_path.as_str()]).as_str()
+                                        );
+                                    }
+                                    None => print_error("Something went wrong creating the committed files")
+                                }
+                            }
+                            // copy the staging area to the working path
+                            for file_path in list_files(repo.get_staging_path().as_str(), true, &vec![]).unwrap() {
+                                let dest = join_path(vec![repo.get_working_path(), diff_path(repo.get_staging_path().as_str() ,file_path.as_str()).unwrap().as_str()]);
+                                write_file(read_file(file_path.as_str()).unwrap().as_str(), dest.as_str()).expect("Something failed while writing to working area");
+                            }
+                        }
+                        None => print_error("Corrupt commit file")
+                    }
+                }
+                None => print_error("Invalid commit_id")
+            }
+        }
+        None => print_error("Not a DVCS folder")
+    }
 }
 
 pub fn merge(commit: &str) {
