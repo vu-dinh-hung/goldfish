@@ -10,10 +10,6 @@ use std::path::PathBuf;
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
     match Repository::find(".") {
-        Some(_) => {
-            print_error("Already a DVCS folder");
-            return
-        }
         None => {
             match create_dir(join_path(vec![".", model::DVCS_ROOT_DIR]).as_str()) {
                 Ok(_) => {
@@ -35,6 +31,7 @@ pub fn init() {
             }
             print_output("Successfully initialized new repository")
         }
+        Some(_) => print_error("Already a DVCS folder")
     }
 }
 
@@ -82,10 +79,7 @@ pub fn commit() {
                 }
             }
         }
-        None => {
-            print_error("Not a DVCS folder");
-            return
-        }
+        None => print_error("Not a DVCS folder")
     }
 }
 
