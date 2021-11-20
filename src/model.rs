@@ -23,7 +23,12 @@ pub const DIGEST_SIZE: usize = 256;
 const STATE: &str = ".goldfish/state.toml";
 pub const STAGING: &str = ".goldfish/staging/";
 
-/* Public Struct */
+fn resolve_reference(reference: &str) -> Option<String> {
+    //! If given a branch name, resolve that branch name to the associated commit id
+    //! else if given a commit id, return that commit id
+    Some(reference.to_string())
+}
+
 #[derive(Debug)]
 pub struct Repository {
     working_path: String,
@@ -47,12 +52,34 @@ impl Repository {
         Repository::find(parent.as_str())  // recursively find in parent path
     }
 
+    pub fn get_current_commit_id(&self) -> io::Result<String> {
+        //! Return the current commit id or an empty string if this is a fresh repository
+        let head_content = filesystem::read_file(filesystem::join_path(vec![&self.repo_path, HEAD]).as_str())?;
+        Ok(resolve_reference(head_content.trim()).unwrap())
+    }
+
     pub fn get_repo_path<'a>(&'a self) -> &'a str {
         &self.repo_path
     }
 
     pub fn get_working_path<'a>(&'a self) -> &'a str {
         &self.working_path
+    }
+
+    pub fn get_head_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, HEAD])
+    }
+
+    pub fn get_commits_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, COMMITS_DIR])
+    }
+
+    pub fn get_staging_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, STAGING_DIR])
+    }
+
+    pub fn get_blobs_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, BLOBS_DIR])
     }
 }
 
@@ -76,23 +103,28 @@ pub struct Commit {
 }
 
 impl Commit {
-    pub fn create(repo_path: &str, direct_parent_id: String, secondary_parent_ids: Vec<String>, file_list: Vec<(String, String)>) -> io::Result<Commit> {
+    pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, file_list: Vec<(String, String)>) -> io::Result<Commit> {
         // TODO: assert non-empty file_list; a commit cannot have no files
 
         let mut content = format!("commit\nparent {}\n", direct_parent_id);
 
-        // write secondary parents
+        // add secondary parents
         for parent in secondary_parent_ids.iter() {
             content = format!("{}parent {}\n", content, parent);
         }
 
-        // write file list
+        // add file list
         for (file_path, blob_id) in file_list.iter() {
             content = format!("{}file {} {}\n", content, file_path, blob_id);
         }
         let commit_id = utilities::hash(content.as_str());
-        let commit_path = filesystem::join_path(vec![repo_path, COMMITS_DIR, commit_id.as_str()]);
+        let commit_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), commit_id.as_str()]);
+
+        // write commit file
         filesystem::write_file(content.as_str(), commit_path.as_str())?;
+
+        // update HEAD file
+        filesystem::write_file(commit_id.as_str(), repo.get_head_path().as_str())?;
 
         Ok(Commit {
             id: commit_id,
@@ -180,18 +212,18 @@ pub struct Blob {
 }
 
 impl Blob {
-    pub fn create(repo_path: &str, blob_data: &str) -> io::Result<Blob> {
+    pub fn create(repo: &Repository, blob_data: &str) -> io::Result<Blob> {
         //! Write a new blob file with the given content
-        let mut content = format!("blob\n{}", blob_data);
+        let content = format!("blob\n{}", blob_data);
         let blob_id = utilities::hash(blob_data);
-        let blob_path = filesystem::join_path(vec![repo_path, BLOBS_DIR, blob_id.as_str()]);
+        let blob_path = filesystem::join_path(vec![repo.get_blobs_path().as_str(), blob_id.as_str()]);
         filesystem::write_file(content.as_str(), blob_path.as_str())?;
         Ok(Blob { id: blob_id, path: blob_path })
     }
 
-    pub fn get(repo_path: &str, id: &str) -> Option<Blob> {
+    pub fn get(repo: &Repository, id: &str) -> Option<Blob> {
         //! Find a blob at the given path
-        let full_path = filesystem::join_path(vec![repo_path, BLOBS_DIR, id]);
+        let full_path = filesystem::join_path(vec![repo.get_blobs_path().as_str(), id]);
         let content = filesystem::read_file(full_path.as_str()).ok()?;
         let mut lines = content.split("\n");
         if lines.nth(0)?.trim() != "blob" {

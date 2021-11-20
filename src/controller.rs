@@ -48,13 +48,13 @@ pub fn commit() {
     match Repository::find(".") {
         Some(repo) => {
             // list files in staging area
-            match list_files(join_path(vec![repo.get_repo_path(), model::STAGING_DIR]).as_str(), true, &vec![]) {
+            match list_files(repo.get_staging_path().as_str(), true, &vec![]) {
                 Ok(files) => {
                     let mut file_list = vec![];
                     // create blobs
                     for file_path in files {
                         let file_content = read_file(file_path.as_str()).expect("This file path should be valid");
-                        match Blob::create(repo.get_repo_path(), file_content.as_str()) {
+                        match Blob::create(&repo, file_content.as_str()) {
                             Ok(blob) => file_list.push((file_path.to_string(), blob.get_id().to_string())),
                             Err(err) => {
                                 print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
@@ -63,9 +63,17 @@ pub fn commit() {
                         }
                     }
                     // create commit
-                    match Commit::create(repo.get_repo_path(), String::from(""), vec![], file_list) {
-                        Ok(commit) => print_output(format!("Created commit: {}", commit.get_id()).as_str()),
-                        Err(err) => print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str())
+                    match repo.get_current_commit_id() {
+                        Ok(current_commit_id) => {
+                            match Commit::create(&repo, current_commit_id, vec![], file_list) {
+                                Ok(commit) => print_output(format!("Created commit: {}", commit.get_id()).as_str()),
+                                Err(err) => print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str())
+                            }
+                        }
+                        Err(err) => {
+                            print_error(format!("Something went wrong reading the current commit id:\n{}", err).as_str());
+                            return
+                        }
                     }
                 }
                 Err(_) => {
