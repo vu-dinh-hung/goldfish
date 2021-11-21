@@ -14,6 +14,11 @@ pub fn get_absolute_path(path: &str) -> PathBuf {
     return fs::canonicalize(path).unwrap();
 }
 
+pub fn get_relative_path_to_wd(base: &str, rel_path: &str) -> String {
+    let abs_path = pathbuf_to_string(get_absolute_path(rel_path));
+    return diff_path(base, abs_path.as_str()).unwrap();
+}
+
 pub fn diff_path(base: &str, path: &str) -> Option<String> {
     pathdiff::diff_paths(Path::new(path), Path::new(base)).map(|pb| pathbuf_to_string(pb))
 }

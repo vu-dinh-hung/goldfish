@@ -17,7 +17,7 @@ pub fn init() {
                 Ok(_) => {
                     assert!(Repository::find(current_directory.as_str()).is_some());
                     let repo = Repository::find(current_directory.as_str()).unwrap();
-                    for file in [model::HEAD] {
+                    for file in [model::HEAD, model::TRACKEDFILES] {
                         write_file("", join_path(vec![repo.get_repo_path(), file]).as_str())
                             .expect(format!("Something went wrong creating the `{}` file", file).as_str());
                     }
@@ -66,7 +66,15 @@ pub fn commit() {
                     // create commit
                     match repo.get_current_commit_id() {
                         Ok(current_commit_id) => {
-                            match Commit::create(&repo, current_commit_id, vec![], file_list) {
+                            let tracked_files;
+                            match repo.get_staging_tracked_files() {
+                                Ok(files) => tracked_files = files,
+                                Err(e) => {
+                                    print_error(e.as_str());
+                                    return;
+                                }
+                            }
+                            match Commit::create(&repo, current_commit_id, vec![], file_list, tracked_files) {
                                 Ok(commit) => {
                                     print_output(format!("Created commit: {}", commit.get_id()).as_str());
                                     repo.clean_staging();
@@ -236,11 +244,11 @@ pub fn add_track_file(path: &str) {
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
             let abs_path = pathbuf_to_string(get_absolute_path(path));
-            let rel_path = diff_path(repo.get_working_path(), abs_path.as_str()).unwrap();
+            let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), path);
             match copy(
                 abs_path.as_str(), 
                 Path::new(repo.get_staging_path().as_str())
-                    .join(rel_path)
+                    .join(&rel_path_to_wd.as_str())
                     .to_str()
                     .unwrap()) {
 
@@ -249,6 +257,10 @@ pub fn add_track_file(path: &str) {
                     print_error(format!("Fail to add {}", path).as_str());
                     return;
                 },
+            }
+            match repo.trackFile(rel_path_to_wd.as_str()) {
+                Some(e) => print_error(e.as_str()),
+                None => (),
             }
         },
         None => print_error("Not a Goldfish folder")
@@ -264,9 +276,9 @@ pub fn delete_track_file(path: &str) {
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
             let abs_path = pathbuf_to_string(get_absolute_path(path));
-            let rel_path = diff_path(repo.get_working_path(), abs_path.as_str()).unwrap();
+            let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), path);
             match remove(Path::new(repo.get_staging_path().as_str())
-                            .join(rel_path)
+                            .join(&rel_path_to_wd.as_str())
                             .to_str()
                             .unwrap()) {
                 Ok(_v) => (),
@@ -274,6 +286,10 @@ pub fn delete_track_file(path: &str) {
                     print_error(format!("Fail to remove {}", path).as_str());
                     return;
                 },
+            }
+            match repo.untrackFile(rel_path_to_wd.as_str()) {
+                Some(e) => print_error(e.as_str()),
+                None => (),
             }
         },
         None => print_error("Not a Goldfish folder")

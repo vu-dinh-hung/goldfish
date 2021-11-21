@@ -15,6 +15,7 @@ pub const BRANCHES_DIR: &str = "branches";
 
 // top-level files
 pub const HEAD: &str = "HEAD";
+pub const TRACKEDFILES: &str = "tracked_files";
 
 // misc
 pub const DIGEST_SIZE: usize = 256;
@@ -81,8 +82,11 @@ impl Repository {
     pub fn get_blobs_path(&self) -> String {
         filesystem::join_path(vec![&self.repo_path, BLOBS_DIR])
     }
+}
 
-    pub fn get_head_path(&self) -> String {
+// Interacting with HEAD
+impl Repository {
+    fn get_head_path(&self) -> String {
         filesystem::join_path(vec![&self.repo_path, HEAD])
     }
 
@@ -98,6 +102,70 @@ impl Repository {
             Ok(_v) => return None,
             Err(_e) => return Some(String::from("Fail to save HEAD")),
         }
+    }
+}
+
+// Interacting with list of tracked files
+impl Repository {
+    fn get_track_files_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, TRACKEDFILES])
+    }
+
+    pub fn get_staging_tracked_files(&self) -> Result<HashMap<String, String>, String> {
+        match filesystem::read_file(&self.get_track_files_path()) {
+            Ok(_raw_tracked_files) => {
+                // parse tracked files
+                let raw_tracked_files = filesystem::read_file(self.get_track_files_path().as_str()).unwrap_or(String::from(""));
+                let mut tracked_file: HashMap<String, String> = HashMap::new();
+                for line in raw_tracked_files.split_terminator('\n') {
+                    let items: Vec<&str> = line.split(" ").collect();
+                    tracked_file.insert(String::from(items[0]), String::from(items[1]));
+                }
+                Ok(tracked_file)
+            },
+            Err(_e) => Err(String::from("Fail to get list of tracked files")),
+        }
+    }
+
+    pub fn save_staging_tracked_files(&self, tracked_file: HashMap<String, String>) -> Option<String> {
+        let mut raw_new_tracked_files = String::new();
+        for (k, v) in tracked_file {
+            raw_new_tracked_files.push_str(format!("{} {}\n", k, v).as_str());
+        }
+        match filesystem::write_file(raw_new_tracked_files.as_str(), &self.get_track_files_path()) {
+            Ok(_x) => None,
+            Err(_e) => Some(String::from("Fail to save list of tracked file")),
+        }
+    }
+
+    pub fn trackFile(&self, abs_file_path: &str) -> Option<String> {
+        // parse tracked files
+        let mut tracked_file;
+        match self.get_staging_tracked_files() {
+            Ok(files) => tracked_file = files,
+            Err(e) => return Some(e),
+        }
+        // track files
+        let file_content = filesystem::read_file(abs_file_path).unwrap();
+        let file_content_hash = utilities::hash(file_content.as_str());
+        let rel_file_path_to_wd = filesystem::get_relative_path_to_wd(self.get_working_path(), abs_file_path);
+        tracked_file.insert(rel_file_path_to_wd, file_content_hash);
+        // write back state
+        self.save_staging_tracked_files(tracked_file)
+    }
+
+    pub fn untrackFile(&self, abs_file_path: &str) -> Option<String> {   
+        // parse tracked files
+        let mut tracked_file;
+        match self.get_staging_tracked_files() {
+            Ok(files) => tracked_file = files,
+            Err(e) => return Some(e),
+        }
+        // untrack files
+        let rel_file_path_to_wd = filesystem::get_relative_path_to_wd(self.get_working_path(), abs_file_path);
+        tracked_file.remove(rel_file_path_to_wd.as_str());
+        // write back state
+        self.save_staging_tracked_files(tracked_file)
     }
 }
 
@@ -121,7 +189,7 @@ pub struct Commit {
 }
 
 impl Commit {
-    pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, file_list: Vec<(String, String)>) -> io::Result<Commit> {
+    pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, file_list: Vec<(String, String)>, tracked_files: HashMap<String, String>) -> io::Result<Commit> {
         // TODO: assert non-empty file_list; a commit cannot have no files
 
         let mut content = format!("commit\nparent {}\n", direct_parent_id);
@@ -137,6 +205,12 @@ impl Commit {
         }
         let commit_id = utilities::hash(content.as_str());
         let commit_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), commit_id.as_str()]);
+
+        // add tracked file list
+        content = format!("{}\n", content);
+        for (file_path, hash) in tracked_files.iter() {
+            content = format!("{}tracked_file {} {}\n", content, file_path, hash);
+        }
 
         // write commit file
         filesystem::write_file(content.as_str(), commit_path.as_str())?;
@@ -188,6 +262,26 @@ impl Commit {
                 let file_path = line.split(' ').nth(1)?;
                 let blob_id = line.split(' ').nth(2)?;
                 result.push((file_path.to_string(), blob_id.to_string()));
+            }
+        }
+
+        // There should be at least one file present for a commit, otherwise this is a defective commit file
+        if result.is_empty() {
+            return None
+        }
+
+        Some(result)
+    }
+
+    pub fn load_tracked_files(&self) -> Option<HashMap<String, String>> {
+        let mut result = HashMap::new();
+        let content = filesystem::read_file(self.path.as_str()).ok()?;
+        let lines = content.split('\n');
+        for line in lines {
+            if line.starts_with("tracked_file") {
+                let file_path = line.split(' ').nth(1)?;
+                let hash = line.split(' ').nth(2)?;
+                result.insert(file_path.to_string(), hash.to_string());
             }
         }
 
@@ -272,28 +366,12 @@ impl Blob {
     }
 }
 
-/* Public Enum */
-pub enum LineChangeState {
-    Delete,
-    Add,
-}
-
-pub enum FileChangeState {
-    Modify,
-    Delete,
-    Add,
-}
-
 /* Internal functions */
 fn diff_blobs(vf1: &Blob, vf2: &Blob) -> Option<Blob> {
     todo!()
 }
 
 fn merge_blobs(vf1: &Blob, vf2: &Blob) -> Blob {
-    todo!()
-}
-
-fn get_list_of_track_files() -> Result<Vec<String>, String> {
     todo!()
 }
 
