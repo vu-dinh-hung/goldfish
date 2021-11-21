@@ -255,20 +255,20 @@ pub fn checkout(commit_id: &str) {
                     match commit.load_file_list() {
                         Some(file_list) => {
                             // remove old files
-                            match list(repo.get_working_path()) {
-                                Ok(entry_list) => {
-                                    for entry in entry_list {
-                                        if canonicalize(entry.as_str()).unwrap() == canonicalize(repo.get_repo_path()).unwrap() {
-                                            continue
-                                        }
-                                        remove(entry.as_str());
-                                    }
-                                }
-                                Err(err) => {
-                                    print_error(format!("Something went wrong deleting the current files:\n{}", err).as_str());
-                                    return
-                                }
-                            }
+                            // match list(repo.get_working_path()) {
+                            //     Ok(entry_list) => {
+                            //         for entry in entry_list {
+                            //             if canonicalize(entry.as_str()).unwrap() == canonicalize(repo.get_repo_path()).unwrap() {
+                            //                 continue
+                            //             }
+                            //             remove(entry.as_str());
+                            //         }
+                            //     }
+                            //     Err(err) => {
+                            //         print_error(format!("Something went wrong deleting the current files:\n{}", err).as_str());
+                            //         return
+                            //     }
+                            // }
                             // populate the staging area with the files of the commit
                             for (file_path, blob_id) in file_list {
                                 match Blob::get(&repo, blob_id.as_str()) {
