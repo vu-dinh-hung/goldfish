@@ -46,6 +46,40 @@ pub fn clone(url: &str) {
 pub fn commit() {
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
+            // Comparing staging with HEAD to check if there is any change
+            let staging_tracked_files;
+            match repo.get_staging_tracked_files() {
+                Ok(files) => staging_tracked_files = files,
+                Err(e) => {
+                    print_error(e.as_str());
+                    return;
+                }
+            }
+            let head_tracked_files;
+            match repo.get_current_commit_id() {
+                Ok(commit_id) => {
+                    match Commit::get(&repo, commit_id.as_str()) {
+                        Some(commit) => {
+                            match commit.load_tracked_files() {
+                                Some(files) => head_tracked_files = files,
+                                None => {
+                                    print_error("Fail to load current commit");
+                                    return;
+                                }
+                            }
+                        },
+                        None => {
+                            print_error("Fail to load current commit");
+                            return;
+                        }
+                    }
+                },
+                Err(e) => head_tracked_files = HashMap::new(),
+            }
+            if utilities::compare_map(&staging_tracked_files, &head_tracked_files) {
+                print_output("Nothing to commit");
+                return;
+            }
             // list files in staging area
             match list_files(repo.get_staging_path().as_str(), true, &vec![]) {
                 Ok(files) => {
