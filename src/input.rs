@@ -17,7 +17,7 @@ pub fn initialize() {
         display::print_welcome();
 
         loop {
-            print!("dvcs> ");
+            print!("Goldfish> ");
             io::stdout().flush();
             // read input
             let mut input = String::new();

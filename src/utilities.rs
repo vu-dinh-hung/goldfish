@@ -1,9 +1,8 @@
 //! # Common Utilities
-use std::path::PathBuf;
-use std::fs;
-use std::env;
 use nanoid::nanoid;
 use sha2::{Sha256, Digest};
+use std::collections::HashMap;
+use std::hash::Hash;
 
 pub fn diff(lines1: Vec<String>, lines2: Vec<String>) -> Vec<(String, String)> {
     //! Returns a list of differences (line by line) in the two strings
@@ -21,6 +20,15 @@ pub fn generate_id() -> String {
     nanoid!(10, &nanoid::alphabet::SAFE)
 }
 
+// True if equal
+pub fn compare_map<K: Eq + Hash, V: Eq>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> bool {
+    for (k, v) in m1 {
+        if !m2.contains_key(&k) || !v.eq(&m2[&k]) {
+            return false;
+        }
+    }
+    return true;
+}
 
 #[cfg(test)]
 mod tests {

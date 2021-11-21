@@ -1,11 +1,10 @@
-use toml::Value;
 use crate::filesystem;
 use crate::utilities;
 use std::collections::HashMap;
 use std::io;
 
 // root
-pub const DVCS_ROOT_DIR: &str = ".goldfish";
+pub const GOLDFISH_ROOT_DIR: &str = ".goldfish";
 
 // top-level directories
 pub const BLOBS_DIR: &str = "blobs";
@@ -32,7 +31,9 @@ fn resolve_reference(reference: &str) -> Option<String> {
 
 #[derive(Debug)]
 pub struct Repository {
+    // Working Dir path
     working_path: String,
+    // .Goldfish path
     repo_path: String,
 }
 
@@ -44,7 +45,7 @@ impl Repository {
             return None
         }
 
-        let current_repo_path = filesystem::join_path(vec![path, DVCS_ROOT_DIR]);
+        let current_repo_path = filesystem::join_path(vec![path, GOLDFISH_ROOT_DIR]);
         if filesystem::is_dir(current_repo_path.as_str()) {
             return Some(Repository { working_path: path.to_owned(), repo_path: current_repo_path })
         }
@@ -123,7 +124,7 @@ impl Repository {
                 }
                 Ok(tracked_file)
             },
-            Err(_e) => Err(String::from("Fail to get list of tracked files")),
+            Err(_e) => Err(String::from("Fail to get staging list of tracked files")),
         }
     }
 
@@ -134,7 +135,7 @@ impl Repository {
         }
         match filesystem::write_file(raw_new_tracked_files.as_str(), &self.get_track_files_path()) {
             Ok(_x) => None,
-            Err(_e) => Some(String::from("Fail to save list of tracked file")),
+            Err(_e) => Some(String::from("Fail to save staging list of tracked file")),
         }
     }
 
