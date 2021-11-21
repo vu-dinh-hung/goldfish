@@ -58,19 +58,23 @@ pub fn commit() {
             let head_tracked_files;
             match repo.get_current_commit_id() {
                 Ok(commit_id) => {
-                    match Commit::get(&repo, commit_id.as_str()) {
-                        Some(commit) => {
-                            match commit.load_tracked_files() {
-                                Some(files) => head_tracked_files = files,
-                                None => {
-                                    print_error("Fail to load current commit");
-                                    return;
+                    if commit_id.is_empty() {
+                        head_tracked_files = HashMap::new();
+                    } else {
+                        match Commit::get(&repo, commit_id.as_str()) {
+                            Some(commit) => {
+                                match commit.load_tracked_files() {
+                                    Some(files) => head_tracked_files = files,
+                                    None => {
+                                        print_error("Fail to load current commitx");
+                                        return;
+                                    }
                                 }
+                            },
+                            None => {
+                                print_error("Fail to load current commity");
+                                return;
                             }
-                        },
-                        None => {
-                            print_error("Fail to load current commit");
-                            return;
                         }
                     }
                 },
@@ -108,7 +112,7 @@ pub fn commit() {
                                     return;
                                 }
                             }
-                            match Commit::create(&repo, current_commit_id, vec![], file_list, tracked_files) {
+                            match Commit::create(&repo, current_commit_id, vec![], tracked_files) {
                                 Ok(commit) => print_output(format!("Created commit: {}", commit.get_id()).as_str()),
                                 Err(err) => print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str())
                             }
@@ -145,19 +149,23 @@ pub fn status() {
             let head_tracked_files;
             match repo.get_current_commit_id() {
                 Ok(commit_id) => {
-                    match Commit::get(&repo, commit_id.as_str()) {
-                        Some(commit) => {
-                            match commit.load_tracked_files() {
-                                Some(files) => head_tracked_files = files,
-                                None => {
-                                    print_error("Fail to load current commit");
-                                    return;
+                    if commit_id.is_empty() {
+                        head_tracked_files = HashMap::new();
+                    } else {
+                        match Commit::get(&repo, commit_id.as_str()) {
+                            Some(commit) => {
+                                match commit.load_tracked_files() {
+                                    Some(files) => head_tracked_files = files,
+                                    None => {
+                                        print_error("Fail to load current commit");
+                                        return;
+                                    }
                                 }
+                            },
+                            None => {
+                                print_error("Fail to load current commity");
+                                return;
                             }
-                        },
-                        None => {
-                            print_error("Fail to load current commit");
-                            return;
                         }
                     }
                 },
@@ -286,25 +294,10 @@ pub fn checkout(commit_id: &str) {
             match Commit::get(&repo, commit_id) {
                 Some(commit) => {
                     // load all the files of that commit
-                    match commit.load_file_list() {
-                        Some(file_list) => {
-                            // remove old files
-                            // match list(repo.get_working_path()) {
-                            //     Ok(entry_list) => {
-                            //         for entry in entry_list {
-                            //             if canonicalize(entry.as_str()).unwrap() == canonicalize(repo.get_repo_path()).unwrap() {
-                            //                 continue
-                            //             }
-                            //             remove(entry.as_str());
-                            //         }
-                            //     }
-                            //     Err(err) => {
-                            //         print_error(format!("Something went wrong deleting the current files:\n{}", err).as_str());
-                            //         return
-                            //     }
-                            // }
+                    match commit.load_tracked_files() {
+                        Some(tracked_file_list) => {
                             // populate the staging area with the files of the commit
-                            for (file_path, blob_id) in file_list {
+                            for (file_path, blob_id) in &tracked_file_list {
                                 match Blob::get(&repo, blob_id.as_str()) {
                                     Some(blob) => {
                                         write_file(
@@ -316,7 +309,7 @@ pub fn checkout(commit_id: &str) {
                                 }
                             }
                             // populate staging tracked files
-                            repo.save_staging_tracked_files(commit.load_tracked_files().unwrap_or(HashMap::new()));
+                            repo.save_staging_tracked_files(tracked_file_list);
                             // copy the staging area to the working path
                             for file_path in list_files(repo.get_staging_path().as_str(), true, &vec![]).unwrap() {
                                 let dest = join_path(vec![repo.get_working_path(), diff_path(repo.get_staging_path().as_str() ,file_path.as_str()).unwrap().as_str()]);

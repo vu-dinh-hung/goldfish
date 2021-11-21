@@ -190,7 +190,7 @@ pub struct Commit {
 }
 
 impl Commit {
-    pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, file_list: Vec<(String, String)>, tracked_files: HashMap<String, String>) -> io::Result<Commit> {
+    pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, tracked_files: HashMap<String, String>) -> io::Result<Commit> {
         // TODO: assert non-empty file_list; a commit cannot have no files
 
         let mut content = format!("commit\nparent {}\n", direct_parent_id);
@@ -200,18 +200,13 @@ impl Commit {
             content = format!("{}parent {}\n", content, parent);
         }
 
-        // add file list
-        for (file_path, blob_id) in file_list.iter() {
-            content = format!("{}file {} {}\n", content, file_path, blob_id);
-        }
-        let commit_id = utilities::hash(content.as_str());
-        let commit_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), commit_id.as_str()]);
-
         // add tracked file list
-        content = format!("{}\n", content);
         for (file_path, hash) in tracked_files.iter() {
             content = format!("{}tracked_file {} {}\n", content, file_path, hash);
         }
+
+        let commit_id = utilities::hash(content.as_str());
+        let commit_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), commit_id.as_str()]);
 
         // write commit file
         filesystem::write_file(content.as_str(), commit_path.as_str())?;
@@ -251,27 +246,6 @@ impl Commit {
             }
         }
         Some(Commit { id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, path: full_path })
-    }
-
-    pub fn load_file_list(&self) -> Option<Vec<(String, String)>> {
-        //! Load all the file entries in the commit file
-        let mut result = vec![];
-        let content = filesystem::read_file(self.path.as_str()).ok()?;
-        let lines = content.split('\n');
-        for line in lines {
-            if line.starts_with("file") {
-                let file_path = line.split(' ').nth(1)?;
-                let blob_id = line.split(' ').nth(2)?;
-                result.push((file_path.to_string(), blob_id.to_string()));
-            }
-        }
-
-        // There should be at least one file present for a commit, otherwise this is a defective commit file
-        if result.is_empty() {
-            return None
-        }
-
-        Some(result)
     }
 
     pub fn load_tracked_files(&self) -> Option<HashMap<String, String>> {
