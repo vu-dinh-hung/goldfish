@@ -16,12 +16,6 @@ pub const BRANCHES_DIR: &str = "branches";
 pub const HEAD: &str = "HEAD";
 pub const TRACKEDFILES: &str = "tracked_files";
 
-// misc
-pub const DIGEST_SIZE: usize = 256;
-
-// Loc's old stuff
-const STATE: &str = ".goldfish/state.toml";
-pub const STAGING: &str = ".goldfish/staging/";
 
 fn resolve_reference(reference: &str) -> Option<String> {
     //! If given a branch name, resolve that branch name to the associated commit id
@@ -155,7 +149,7 @@ impl Repository {
         self.save_staging_tracked_files(tracked_file)
     }
 
-    pub fn untrackFile(&self, abs_file_path: &str) -> Option<String> {   
+    pub fn untrackFile(&self, abs_file_path: &str) -> Option<String> {
         // parse tracked files
         let mut tracked_file;
         match self.get_staging_tracked_files() {
