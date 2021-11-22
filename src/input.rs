@@ -43,7 +43,7 @@ pub fn initialize() {
 
     @param args: list of arguments from user input
 */
-pub fn process_command(args: Vec<&str>) {
+fn process_command(args: Vec<&str>) {
     if !args.is_empty() {
         match args[0] {
             "" => return,
@@ -75,7 +75,7 @@ pub fn process_command(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_quit(args: Vec<&str>) {
+fn process_quit(args: Vec<&str>) {
     if args.len() == 1 {
         process::exit(0);
     } else {
@@ -91,7 +91,7 @@ pub fn process_quit(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_help(args: Vec<&str>) {
+fn process_help(args: Vec<&str>) {
     if args.len() == 1 {
         display::print_help();
     } else {
@@ -109,7 +109,7 @@ pub fn process_help(args: Vec<&str>) {
     @param args: list of arguments from user input
 */
 
-pub fn process_init(args: Vec<&str>) {
+fn process_init(args: Vec<&str>) {
     if args.len() == 1 {
         controller::init();
     } else {
@@ -125,7 +125,7 @@ pub fn process_init(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_clone(args: Vec<&str>) {
+fn process_clone(args: Vec<&str>) {
     if args.len() == 2 {
         controller::clone(args[1]);
     } else {
@@ -140,7 +140,7 @@ pub fn process_clone(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_add(args: Vec<&str>) {
+fn process_add(args: Vec<&str>) {
     if args.len() == 2 {
         controller::add_track_file(args[1]);
     } else {
@@ -155,7 +155,7 @@ pub fn process_add(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_remove(args: Vec<&str>) {
+fn process_remove(args: Vec<&str>) {
     if args.len() == 2 {
         controller::delete_track_file(args[1]);
     } else {
@@ -170,7 +170,7 @@ pub fn process_remove(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_status(args: Vec<&str>) {
+fn process_status(args: Vec<&str>) {
     if args.len() == 1 {
         controller::status();
     } else {
@@ -185,7 +185,7 @@ pub fn process_status(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_heads(args: Vec<&str>) {
+fn process_heads(args: Vec<&str>) {
     if args.len() == 1 {
         controller::heads();
     } else {
@@ -200,7 +200,7 @@ pub fn process_heads(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_diff(args: Vec<&str>) {
+fn process_diff(args: Vec<&str>) {
     if args.len() == 3 {
         controller::diff(args[1], args[2]);
     } else {
@@ -215,7 +215,7 @@ pub fn process_diff(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_cat(args: Vec<&str>) {
+fn process_cat(args: Vec<&str>) {
     if args.len() == 3 {
         controller::cat(args[1], args[2]);
     } else {
@@ -230,7 +230,7 @@ pub fn process_cat(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_checkout(args: Vec<&str>) {
+fn process_checkout(args: Vec<&str>) {
     if args.len() == 2 {
         controller::checkout(args[1]);
     } else {
@@ -245,7 +245,7 @@ pub fn process_checkout(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_commit(args: Vec<&str>) {
+fn process_commit(args: Vec<&str>) {
     if args.len() == 1 {
         controller::commit();
     } else {
@@ -260,7 +260,7 @@ pub fn process_commit(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_log(args: Vec<&str>) {
+fn process_log(args: Vec<&str>) {
     if args.len() == 1 {
         controller::log();
     } else {
@@ -275,7 +275,7 @@ pub fn process_log(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_merge(args: Vec<&str>) {
+fn process_merge(args: Vec<&str>) {
     if args.len() == 2 {
         controller::merge(args[1]);
     } else {
@@ -290,7 +290,7 @@ pub fn process_merge(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_pull(args: Vec<&str>) {
+fn process_pull(args: Vec<&str>) {
     if args.len() == 1 {
         controller::pull();
     } else {
@@ -305,7 +305,7 @@ pub fn process_pull(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-pub fn process_push(args: Vec<&str>) {
+fn process_push(args: Vec<&str>) {
     if args.len() == 1 {
         controller::push();
     } else {
