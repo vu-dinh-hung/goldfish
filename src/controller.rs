@@ -101,6 +101,8 @@ pub fn commit() {
                             }
                         }
                     }
+                    // clean staging
+                    remove(repo.get_staging_path().as_str()).unwrap();
                     // create commit
                     match repo.get_current_commit_id() {
                         Ok(current_commit_id) => {
@@ -349,6 +351,39 @@ pub fn set_remote() {
     todo!()
 }
 
+fn copy_and_mark_fike_tracked(repo: &Repository, abs_path: &str, rel_path_to_wd: &str) {
+    // if file hasn't changed, don't add it
+    match repo.get_file_content_hash(rel_path_to_wd) {
+        Some(hash) => {
+            let file_content = read_file(abs_path).unwrap();
+            let file_content_hash = utilities::hash(file_content.as_str());
+            if file_content_hash == hash {
+                return;
+            }
+        },
+        None => (),
+    }
+    // copy file to staging
+    match copy(
+        abs_path, 
+        Path::new(repo.get_staging_path().as_str())
+            .join(&rel_path_to_wd)
+            .to_str()
+            .unwrap()) {
+
+        Ok(_v) => (),
+        Err(_e) => {
+            print_error(format!("Fail to add {}", abs_path).as_str());
+            return;
+        },
+    }
+    // add/update file in tracked list
+    match repo.trackFile(rel_path_to_wd) {
+        Some(e) => print_error(e.as_str()),
+        None => (),
+    }
+}
+
 pub fn add_track_file(path: &str) {
     // sanity check
     if !is_file(path) && !is_dir(path) {
@@ -359,34 +394,15 @@ pub fn add_track_file(path: &str) {
         Some(repo) => {
             let abs_path = pathbuf_to_string(get_absolute_path(path));
             let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
-            match copy(
-                abs_path.as_str(), 
-                Path::new(repo.get_staging_path().as_str())
-                    .join(&rel_path_to_wd.as_str())
-                    .to_str()
-                    .unwrap()) {
-
-                Ok(_v) => (),
-                Err(_e) => {
-                    print_error(format!("Fail to add {}", path).as_str());
-                    return;
-                },
-            }
             if !is_dir(path) {
-                match repo.trackFile(rel_path_to_wd.as_str()) {
-                    Some(e) => print_error(e.as_str()),
-                    None => (),
-                }
+                copy_and_mark_fike_tracked(&repo, abs_path.as_str(), rel_path_to_wd.as_str());
             } else {
                 match list_files(abs_path.as_str(), true, &vec![repo.get_repo_path()]) {
                     Ok(files) => {
                         for file_path in files {
                             let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
                             let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
-                            match repo.trackFile(rel_path_to_wd.as_str()) {
-                                Some(e) => print_error(e.as_str()),
-                                None => (),
-                            }
+                            copy_and_mark_fike_tracked(&repo, abs_path.as_str(), rel_path_to_wd.as_str());
                         }
                     },
                     Err(_e) => (),

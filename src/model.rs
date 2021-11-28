@@ -122,6 +122,19 @@ impl Repository {
         }
     }
 
+    pub fn get_file_content_hash(&self, rel_file_path_to_wd: &str) -> Option<String> {
+        match self.get_staging_tracked_files() {
+            Ok(map) => {
+                if map.contains_key(rel_file_path_to_wd) {
+                    Some(map[rel_file_path_to_wd].clone())
+                } else {
+                    None
+                }
+            },
+            Err(_e) => None,
+        }
+    }
+
     pub fn save_staging_tracked_files(&self, tracked_file: HashMap<String, String>) -> Option<String> {
         let mut raw_new_tracked_files = String::new();
         for (k, v) in tracked_file {
