@@ -317,6 +317,8 @@ pub fn checkout(commit_id: &str) {
                                 let dest = join_path(vec![repo.get_working_path(), diff_path(repo.get_staging_path().as_str() ,file_path.as_str()).unwrap().as_str()]);
                                 write_file(read_file(file_path.as_str()).unwrap().as_str(), dest.as_str()).expect("Something failed while writing to working area");
                             }
+                            // clean staging
+                            remove(repo.get_staging_path().as_str()).unwrap();
                         }
                         None => print_error("Corrupt commit file")
                     }
