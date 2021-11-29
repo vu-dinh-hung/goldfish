@@ -1,17 +1,40 @@
-use toml::Value;
 use crate::filesystem;
 use crate::utilities;
 use std::collections::HashMap;
+use std::io;
 
-pub const DVCS_DIR: &str = ".goldfish";
+// root
+pub const GOLDFISH_ROOT_DIR: &str = ".goldfish";
+
+// top-level directories
+pub const BLOBS_DIR: &str = "blobs";
+pub const STAGING_DIR: &str = "staging";
+pub const COMMITS_DIR: &str = "commits";
+pub const BRANCHES_DIR: &str = "branches";
+
+// top-level files
+pub const HEAD: &str = "HEAD";
+pub const TRACKEDFILES: &str = "tracked_files";
+
+// misc
+pub const DIGEST_SIZE: usize = 256;
+
+// Loc's old stuff
 const STATE: &str = ".goldfish/state.toml";
 pub const STAGING: &str = ".goldfish/staging/";
 
-/* Public Struct */
+fn resolve_reference(reference: &str) -> Option<String> {
+    //! If given a branch name, resolve that branch name to the associated commit id
+    //! else if given a commit id, return that commit id
+    Some(reference.to_string())
+}
+
 #[derive(Debug)]
 pub struct Repository {
+    // Working Dir path
     working_path: String,
-    dvcs_path: String,
+    // .Goldfish path
+    repo_path: String,
 }
 
 impl Repository {
@@ -22,206 +45,308 @@ impl Repository {
             return None
         }
 
-        let current_dvcs_path = filesystem::join_path(vec![path, DVCS_DIR]);
-        if filesystem::is_dir(current_dvcs_path.as_str()) {
-            return Some(Repository { working_path: path.to_owned(), dvcs_path: current_dvcs_path })
+        let current_repo_path = filesystem::join_path(vec![path, GOLDFISH_ROOT_DIR]);
+        if filesystem::is_dir(current_repo_path.as_str()) {
+            return Some(Repository { working_path: path.to_owned(), repo_path: current_repo_path })
         }
 
         let parent = filesystem::parent(path)?;  // return None if there is no parent path
         Repository::find(parent.as_str())  // recursively find in parent path
     }
 
-    pub fn get_dvcs_path<'a>(&'a self) -> &'a str {
-        &self.dvcs_path
+    pub fn get_current_commit_id(&self) -> io::Result<String> {
+        //! Return the current commit id or an empty string if this is a fresh repository
+        let head_content = filesystem::read_file(filesystem::join_path(vec![&self.repo_path, HEAD]).as_str())?;
+        Ok(resolve_reference(head_content.trim()).unwrap())
+    }
+
+    pub fn get_repo_path<'a>(&'a self) -> &'a str {
+        &self.repo_path
     }
 
     pub fn get_working_path<'a>(&'a self) -> &'a str {
         &self.working_path
     }
-}
 
-// Data structure to interact with a file
-pub struct VirtualFile {}
-
-/* Public Enum */
-pub enum LineChangeState {
-    Delete,
-    Add,
-}
-
-pub enum FileChangeState {
-    Modify,
-    Delete,
-    Add,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    FailToLoadGoldfish,
-    SomethingWentWrong,
-    NotFile,
-    TrackedFileAlreadyAdded,
-}
-
-/* Internal methods */
-fn diff_virtual_files(vf1: &VirtualFile, vf2: &VirtualFile) -> VirtualFile {
-    todo!()
-}
-
-fn merge_virtual_files(vf1: &VirtualFile, vf2: &VirtualFile) -> VirtualFile {
-    todo!()
-}
-fn get_list_of_track_files() -> Result<Vec<String>, Error> {
-    todo!()
-}
-
-fn read_state() -> Result<Value, Error> {
-    // read Goldfish file into goldfish_raw
-    let goldfish_raw: String;
-    match filesystem::read_file(STATE) {
-        Ok(raw) => goldfish_raw = raw,
-        Err(_e) => return Err(Error::FailToLoadGoldfish)
+    pub fn get_commits_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, COMMITS_DIR])
     }
-    // deserialize raw
-    let goldfish_state: Value;
-    match toml::from_str(goldfish_raw.as_str()) {
-        Ok(val) => goldfish_state = val,
-        Err(_e) => return Err(Error::FailToLoadGoldfish)
-    }
-    return Ok(goldfish_state);
-}
 
-fn write_state(goldfish_state: Value) -> Option<Error> {
-    // serialize goldfish
-    let goldfish_raw: String;
-    match toml::to_string(&goldfish_state) {
-        Ok(s) => goldfish_raw = s,
-        Err(_e) => return Some(Error::SomethingWentWrong)
+    pub fn get_staging_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, STAGING_DIR])
     }
-    // write back to Goldfish file
-    match filesystem::write_file(goldfish_raw.as_str(), STATE) {
-        Ok(_v) => return None,
-        Err(_e) => return Some(Error::SomethingWentWrong),
+
+    pub fn clean_staging(&self) {
+        filesystem::remove(&self.get_staging_path()).unwrap();
+    }
+
+    pub fn get_blobs_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, BLOBS_DIR])
     }
 }
 
-/* External methods */
+// Interacting with HEAD
+impl Repository {
+    fn get_head_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, HEAD])
+    }
 
-/**
- * Add a file to track list, use FileSystem to update tracking list file
- *
- * @param path: path to file to add
- * @return: Some(Error) if failed, None otherwise
- */
-pub fn add_track_file(path: &str) -> Option<Error> {
-    // sanity check
-    if !filesystem::is_file(path) {
-        return Some(Error::NotFile);
-    }
-    // copy file to staging
-    match filesystem::copy_file(path, utilities::map_path_to_snapshot(path, STAGING).as_str()) {
-        Ok(_v) => (),
-        Err(_e) => return Some(Error::SomethingWentWrong),
-    }
-    return None;
-}
-
-pub fn add_revision(rev_id: &String) -> Option<Error> {
-    let mut goldfish_state: Value;
-    match read_state() {
-        Ok(state) => goldfish_state = state,
-        Err(_e) => return Some(Error::FailToLoadGoldfish)
-    }
-    // add tracked file
-    let cur_rev_id: String;
-    match get_current_revision() {
-        Ok(rev_id) => cur_rev_id = rev_id,
-        Err(e) => return Some(e),
-    }
-    let mut rev: HashMap<String, Value> = HashMap::new();
-    rev.insert("id".to_string(), Value::try_from(rev_id).unwrap());
-    rev.insert("prev".to_string(), Value::try_from(cur_rev_id).unwrap());
-    if goldfish_state.get("revisions").is_none() {
-        goldfish_state.as_table_mut().unwrap().insert("revisions".to_string(), Value::try_from(Vec::new() as Vec<Value>).unwrap());
-    }
-    match goldfish_state["revisions"].as_array_mut() {
-        Some(vector) => {
-            vector.push(Value::try_from(rev).unwrap());
-            vector.dedup();
+    pub fn read_HEAD(&self) -> Result<String, String> {
+        match filesystem::read_file(&self.get_head_path()) {
+            Ok(goldfish_HEAD) => Ok(goldfish_HEAD),
+            Err(_e) => Err(String::from("Fail to load HEAD file"))
         }
-        None => return Some(Error::FailToLoadGoldfish)
     }
-    goldfish_state.as_table_mut().unwrap().insert("HEAD".to_string(), Value::try_from(rev_id).unwrap());
-    write_state(goldfish_state)
-}
 
-/**
- * Delete a file to track list, use FileSystem to update tracking list file
- *
- * @param path: path to file to delete
- * @return: Some(Error) if failed, None otherwise
- */
-pub fn delete_track_file(path: String) -> Option<Error> {
-    todo!()
-}
-
-/**
- * Get current revision, Use Filesystem to read HEAD file
- *
- * @return: Err(Error) if failed, Ok(Revision) otherwise
- */
-pub fn get_current_revision() -> Result<String, Error> {
-    let mut goldfish_state: Value;
-    match read_state() {
-        Ok(state) => goldfish_state = state,
-        Err(_e) => return Err(Error::FailToLoadGoldfish)
+    pub fn write_HEAD(&self, goldfish_HEAD: String) -> Option<String> {
+        match filesystem::write_file(goldfish_HEAD.as_str(), &self.get_head_path()) {
+            Ok(_v) => return None,
+            Err(_e) => return Some(String::from("Fail to save HEAD")),
+        }
     }
-    Ok(goldfish_state.get("HEAD")
-        .or(Some(&Value::try_from("").unwrap()))
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .to_string()
-    )
+}
+
+// Interacting with list of tracked files
+impl Repository {
+    fn get_track_files_path(&self) -> String {
+        filesystem::join_path(vec![&self.repo_path, TRACKEDFILES])
+    }
+
+    pub fn get_staging_tracked_files(&self) -> Result<HashMap<String, String>, String> {
+        match filesystem::read_file(&self.get_track_files_path()) {
+            Ok(_raw_tracked_files) => {
+                // parse tracked files
+                let raw_tracked_files = filesystem::read_file(self.get_track_files_path().as_str()).unwrap_or(String::from(""));
+                let mut tracked_file: HashMap<String, String> = HashMap::new();
+                for line in raw_tracked_files.split_terminator('\n') {
+                    let items: Vec<&str> = line.split(" ").collect();
+                    tracked_file.insert(String::from(items[0]), String::from(items[1]));
+                }
+                Ok(tracked_file)
+            },
+            Err(_e) => Err(String::from("Fail to get staging list of tracked files")),
+        }
+    }
+
+    pub fn save_staging_tracked_files(&self, tracked_file: HashMap<String, String>) -> Option<String> {
+        let mut raw_new_tracked_files = String::new();
+        for (k, v) in tracked_file {
+            raw_new_tracked_files.push_str(format!("{} {}\n", k, v).as_str());
+        }
+        match filesystem::write_file(raw_new_tracked_files.as_str(), &self.get_track_files_path()) {
+            Ok(_x) => None,
+            Err(_e) => Some(String::from("Fail to save staging list of tracked file")),
+        }
+    }
+
+    pub fn trackFile(&self, abs_file_path: &str) -> Option<String> {
+        // parse tracked files
+        let mut tracked_file;
+        match self.get_staging_tracked_files() {
+            Ok(files) => tracked_file = files,
+            Err(e) => return Some(e),
+        }
+        // track files
+        let file_content = filesystem::read_file(abs_file_path).unwrap();
+        let file_content_hash = utilities::hash(file_content.as_str());
+        let rel_file_path_to_wd = filesystem::get_relative_path_to_wd(self.get_working_path(), abs_file_path);
+        tracked_file.insert(rel_file_path_to_wd, file_content_hash);
+        // write back state
+        self.save_staging_tracked_files(tracked_file)
+    }
+
+    pub fn untrackFile(&self, abs_file_path: &str) -> Option<String> {   
+        // parse tracked files
+        let mut tracked_file;
+        match self.get_staging_tracked_files() {
+            Ok(files) => tracked_file = files,
+            Err(e) => return Some(e),
+        }
+        // untrack files
+        let rel_file_path_to_wd = filesystem::get_relative_path_to_wd(self.get_working_path(), abs_file_path);
+        tracked_file.remove(rel_file_path_to_wd.as_str());
+        // write back state
+        self.save_staging_tracked_files(tracked_file)
+    }
 }
 
 /**
- * Get current branch, Use Filesystem to read HEAD file
- *
- * @return: Err(Error) if failed, Ok(String) otherwise
+ * This is an interface for interacting with commit files. Commit files' filename is
+ * the hash digest of their file content, and they have the following format:
+ * ```
+ * commit\n
+ * parent {direct_parent_id}\n
+ * {{ zero or more lines of `parent {parent_id}\n' for any other (merged) parents` }}
+ * file {file_path} {blob_id}\n
+ * {{ more file lines if necessary }}
+ * ```
  */
-pub fn get_current_branch() -> Result<String, Error> {
+#[derive(Debug)]
+pub struct Commit {
+    id: String,
+    direct_parent_id: String,
+    secondary_parent_ids: Vec<String>,
+    path: String,
+}
+
+impl Commit {
+    pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, tracked_files: HashMap<String, String>) -> io::Result<Commit> {
+        // TODO: assert non-empty file_list; a commit cannot have no files
+
+        let mut content = format!("commit\nparent {}\n", direct_parent_id);
+
+        // add secondary parents
+        for parent in secondary_parent_ids.iter() {
+            content = format!("{}parent {}\n", content, parent);
+        }
+
+        // add tracked file list
+        for (file_path, hash) in tracked_files.iter() {
+            content = format!("{}tracked_file {} {}\n", content, file_path, hash);
+        }
+
+        let commit_id = utilities::hash(content.as_str());
+        let commit_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), commit_id.as_str()]);
+
+        // write commit file
+        filesystem::write_file(content.as_str(), commit_path.as_str())?;
+
+        // update HEAD file
+        repo.write_HEAD(String::from(&commit_id));
+
+        Ok(Commit {
+            id: commit_id,
+            direct_parent_id: direct_parent_id,
+            secondary_parent_ids: secondary_parent_ids,
+            path: commit_path
+        })
+    }
+
+    pub fn get(repo: &Repository, id: &str) -> Option<Commit> {
+        //! Find the commit file at the given path
+        //! and return the Commit object loaded from that commit file
+        let full_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), id]);
+        let content = filesystem::read_file(full_path.as_str()).ok()?;
+        let mut lines = content.split('\n');
+        if lines.nth(0)?.trim() != "commit" {
+            return None
+        }
+        let mut parent = String::from("");
+        let mut secondary_parents = vec![];
+        for line in lines {
+            if line.starts_with("parent") {
+                let current_parent = line.split(" ").nth(1)?.to_string();
+                if parent == "" {
+                    parent = current_parent;
+                } else {
+                    secondary_parents.push(current_parent);
+                }
+            } else {
+                break
+            }
+        }
+        Some(Commit { id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, path: full_path })
+    }
+
+    pub fn load_tracked_files(&self) -> Option<HashMap<String, String>> {
+        let mut result = HashMap::new();
+        let content = filesystem::read_file(self.path.as_str()).ok()?;
+        let lines = content.split('\n');
+        for line in lines {
+            if line.starts_with("tracked_file") {
+                let file_path = line.split(' ').nth(1)?;
+                let hash = line.split(' ').nth(2)?;
+                result.insert(file_path.to_string(), hash.to_string());
+            }
+        }
+
+        // There should be at least one file present for a commit, otherwise this is a defective commit file
+        if result.is_empty() {
+            return None
+        }
+
+        Some(result)
+    }
+
+    pub fn pretty_print(&self) -> String {
+        format!("Commit: {}", &self.id)
+    }
+
+    pub fn get_path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn get_id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn get_direct_parent_id(&self) -> &str {
+        &self.direct_parent_id
+    }
+
+    pub fn get_secondary_parent_ids(&self) -> &Vec<String> {
+        &self.secondary_parent_ids
+    }
+}
+
+/**
+ * A blob is a file whose name is the hash of its MAIN CONTENT
+ * Format:
+ * ```
+ * blob\n
+ * {{ MAIN CONTENT }}
+ * ```
+ */
+#[derive(Debug)]
+pub struct Blob {
+    id: String,
+    path: String,
+}
+
+impl Blob {
+    pub fn create(repo: &Repository, blob_data: &str) -> io::Result<Blob> {
+        //! Write a new blob file with the given content
+        let content = format!("blob\n{}", blob_data);
+        let blob_id = utilities::hash(blob_data);
+        let blob_path = filesystem::join_path(vec![repo.get_blobs_path().as_str(), blob_id.as_str()]);
+        filesystem::write_file(content.as_str(), blob_path.as_str())?;
+        Ok(Blob { id: blob_id, path: blob_path })
+    }
+
+    pub fn get(repo: &Repository, id: &str) -> Option<Blob> {
+        //! Find a blob at the given path
+        let full_path = filesystem::join_path(vec![repo.get_blobs_path().as_str(), id]);
+        let content = filesystem::read_file(full_path.as_str()).ok()?;
+        let mut lines = content.split("\n");
+        if lines.nth(0)?.trim() != "blob" {
+            return None
+        }
+
+        Some(Blob { id: id.to_string(), path: full_path })
+    }
+
+    pub fn get_blob_content(&self) -> io::Result<String> {
+        //! Read the main content of the blob
+        let content = filesystem::read_file(&self.path.as_str())?;
+        let lines = content.split("\n");
+        Ok(lines.skip(1).map(|x| x.to_string()).collect::<Vec<String>>().join("\n"))
+    }
+
+    pub fn get_id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn get_path(&self) -> &str {
+        &self.path
+    }
+}
+
+/* Internal functions */
+fn diff_blobs(vf1: &Blob, vf2: &Blob) -> Option<Blob> {
     todo!()
 }
 
-/**
- * Read file and create a VirtualFile from it, use FileSystem to read the file
- *
- * @param path: path to file
- * @return: Err(Error) if failed, Ok(VirtualFile) otherwise
- */
-pub fn create_virtual_file_from_path(path: String) -> Result<VirtualFile, Error> {
-    // Read file from path
-    todo!()
-}
-
-/**
- * Read file from a revision and create a VirtualFile from it, use FileSystem to read the file
- *
- * @param path: path to file
- * @param rev: revision of the file
- * @return: Err(Error) if failed, Ok(VirtualFile) otherwise
- */
-pub fn create_virtual_file_from_revision_path(path: String, rev_id: String) -> Result<VirtualFile, Error> {
-    todo!()
-}
-
-/**
- * Get list of revision, use FileSystem to read revision list file
- *
- * @return: Err(Error) if failed, Ok(Vec<Revision>) otherwise
- */
-pub fn get_list_of_revisions() -> Result<Vec<String>, Error> {
+fn merge_blobs(vf1: &Blob, vf2: &Blob) -> Blob {
     todo!()
 }
 

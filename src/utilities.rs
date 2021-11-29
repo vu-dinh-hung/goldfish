@@ -1,8 +1,8 @@
 //! # Common Utilities
-use std::path::PathBuf;
-use std::fs;
-use std::env;
 use nanoid::nanoid;
+use sha2::{Sha256, Digest};
+use std::collections::HashMap;
+use std::hash::Hash;
 
 pub fn diff(lines1: Vec<String>, lines2: Vec<String>) -> Vec<(String, String)> {
     //! Returns a list of differences (line by line) in the two strings
@@ -10,19 +10,25 @@ pub fn diff(lines1: Vec<String>, lines2: Vec<String>) -> Vec<(String, String)> {
     todo!()
 }
 
-pub fn hash() -> String {
+pub fn hash(data: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    format!("{:X}", hasher.finalize())
+}
+
+pub fn generate_id() -> String {
     nanoid!(10, &nanoid::alphabet::SAFE)
 }
 
-pub fn map_path_to_snapshot<'a>(path: &'a str, snapshot_path: &'a str) -> String {
-    let mut dir_path = env::current_dir().unwrap();
-    let absolute_path = fs::canonicalize(PathBuf::from(path)).unwrap();
-    let relative_path = absolute_path.to_str().unwrap()[dir_path.to_str().unwrap().chars().count()+1..].to_string();
-    dir_path.push(snapshot_path);
-    dir_path.push(relative_path);
-    return dir_path.to_str().unwrap().to_string();
+// True if equal
+pub fn compare_map<K: Eq + Hash, V: Eq>(m1: &HashMap<K, V>, m2: &HashMap<K, V>) -> bool {
+    for (k, v) in m1 {
+        if !m2.contains_key(&k) || !v.eq(&m2[&k]) {
+            return false;
+        }
+    }
+    return true;
 }
-
 
 #[cfg(test)]
 mod tests {

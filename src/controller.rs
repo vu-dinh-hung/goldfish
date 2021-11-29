@@ -1,84 +1,332 @@
 //! # Controller
+use std::path::Path;
 use crate::model;
-use crate::model::{Repository};
 use crate::utilities;
+use crate::model::{Repository, Blob, Commit};
 use crate::filesystem::*;
-use std::path::PathBuf;
+use crate::display::{print_output, print_error};
+use std::collections::HashMap;
+
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
-    let current_working_directory = std::env::current_dir().unwrap().into_os_string().into_string().unwrap();
-    if Repository::find(current_working_directory.as_str()).is_some() {
-        panic!("Already a DVCS repository");
-    }
-    match create_dir(join_path(vec![current_working_directory.as_str(), model::DVCS_DIR]).as_str()) {
-        Ok(_) => {
-            assert!(Repository::find(current_working_directory.as_str()).is_some());
-            let repo = Repository::find(current_working_directory.as_str()).unwrap();
-            write_file("", join_path(vec![repo.get_dvcs_path(), "state.toml"]).as_str())
-                .expect("Something went wrong creating the `state.toml` file");
-            create_dir(join_path(vec![repo.get_dvcs_path(), "staging"]).as_str())
-                .expect("Something went wrong creating the `staging` directory");
-            create_dir(join_path(vec![repo.get_dvcs_path(), "objects"]).as_str())
-                .expect("Something went wrong creating the `objects` directory");
-            create_dir(join_path(vec![repo.get_dvcs_path(), "commits"]).as_str())
-                .expect("Something went wrong creating the `commits` directory");
-        },
-        Err(_) => panic!("Something went wrong creating the .dvcs folder")
+    let current_directory = pathbuf_to_string(std::env::current_dir().unwrap());
+    match Repository::find(current_directory.as_str()) {
+        None => {
+            match create_dir(join_path(vec![current_directory.as_str(), model::GOLDFISH_ROOT_DIR]).as_str()) {
+                Ok(_) => {
+                    assert!(Repository::find(current_directory.as_str()).is_some());
+                    let repo = Repository::find(current_directory.as_str()).unwrap();
+                    for file in [model::HEAD, model::TRACKEDFILES] {
+                        write_file("", join_path(vec![repo.get_repo_path(), file]).as_str())
+                            .expect(format!("Something went wrong creating the `{}` file", file).as_str());
+                    }
+                    for folder in [model::BLOBS_DIR, model::BRANCHES_DIR, model::COMMITS_DIR, model::STAGING_DIR] {
+                        create_dir(join_path(vec![repo.get_repo_path(), folder]).as_str())
+                            .expect(format!("Something went wrong creating the `{}` directory", folder).as_str());
+                    }
+                },
+                Err(_) => {
+                    print_error("Something went wrong creating the .goldfish folder");
+                    return
+                }
+            }
+            print_output("Successfully initialized new repository")
+        }
+        Some(_) => print_error("Already a Goldfish folder")
     }
 }
 
-pub fn clone(url: String) {
+pub fn clone(url: &str) {
     //! Create a folder with the repo name, download the .dvcs folder from the specified url,
     //! and load the full directory into the folder
     todo!()
 }
 
-pub fn commit() -> Option<model::Error> {
-    let rev_id = utilities::hash();
-    match model::add_revision(&rev_id) {
-        Some(e) => return Some(e),
-        None => (),
+pub fn commit() {
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            // Comparing staging with HEAD to check if there is any change
+            let staging_tracked_files;
+            match repo.get_staging_tracked_files() {
+                Ok(files) => staging_tracked_files = files,
+                Err(e) => {
+                    print_error(e.as_str());
+                    return;
+                }
+            }
+            let head_tracked_files;
+            match repo.get_current_commit_id() {
+                Ok(commit_id) => {
+                    if commit_id.is_empty() {
+                        head_tracked_files = HashMap::new();
+                    } else {
+                        match Commit::get(&repo, commit_id.as_str()) {
+                            Some(commit) => {
+                                match commit.load_tracked_files() {
+                                    Some(files) => head_tracked_files = files,
+                                    None => {
+                                        print_error("Fail to load current commitx");
+                                        return;
+                                    }
+                                }
+                            },
+                            None => {
+                                print_error("Fail to load current commity");
+                                return;
+                            }
+                        }
+                    }
+                },
+                Err(e) => head_tracked_files = HashMap::new(),
+            }
+            if utilities::compare_map(&staging_tracked_files, &head_tracked_files) {
+                print_output("Nothing to commit");
+                return;
+            }
+            // list files in staging area
+            match list_files(repo.get_staging_path().as_str(), true, &vec![]) {
+                Ok(files) => {
+                    let mut file_list = vec![];
+                    // create blobs
+                    for file_path in files {
+                        let file_content = read_file(file_path.as_str()).expect("This file path should be valid");
+                        match Blob::create(&repo, file_content.as_str()) {
+                            Ok(blob) => {
+                                file_list.push((diff_path(repo.get_staging_path().as_str(), file_path.as_str()).unwrap(), blob.get_id().to_string()))
+                            },
+                            Err(err) => {
+                                print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
+                                return
+                            }
+                        }
+                    }
+                    // create commit
+                    match repo.get_current_commit_id() {
+                        Ok(current_commit_id) => {
+                            let tracked_files;
+                            match repo.get_staging_tracked_files() {
+                                Ok(files) => tracked_files = files,
+                                Err(e) => {
+                                    print_error(e.as_str());
+                                    return;
+                                }
+                            }
+                            match Commit::create(&repo, current_commit_id, vec![], tracked_files) {
+                                Ok(commit) => print_output(format!("Created commit: {}", commit.get_id()).as_str()),
+                                Err(err) => print_error(format!("Something went wrong writing the commit file:\n{}", err).as_str())
+                            }
+                        }
+                        Err(err) => {
+                            print_error(format!("Something went wrong reading the current commit id:\n{}", err).as_str());
+                            return
+                        }
+                    }
+                }
+                Err(_) => {
+                    print_error("No file found in staging area. Please `add` files before committing");
+                    return
+                }
+            }
+        }
+        None => print_error("Not a Goldfish folder")
     }
-    let mut rev_folder = PathBuf::from(model::DVCS_DIR);
-    rev_folder.push(rev_id);
-    copy_dir(model::STAGING, rev_folder).unwrap();
-    return None;
 }
 
 pub fn status() {
-    //! Print the current changed files and staged files to the output display
-    todo!()
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            let mut change = false;
+            // Comparing staging with HEAD
+            let staging_tracked_files;
+            match repo.get_staging_tracked_files() {
+                Ok(files) => staging_tracked_files = files,
+                Err(e) => {
+                    print_error(e.as_str());
+                    return;
+                }
+            }
+            let head_tracked_files;
+            match repo.get_current_commit_id() {
+                Ok(commit_id) => {
+                    if commit_id.is_empty() {
+                        head_tracked_files = HashMap::new();
+                    } else {
+                        match Commit::get(&repo, commit_id.as_str()) {
+                            Some(commit) => {
+                                match commit.load_tracked_files() {
+                                    Some(files) => head_tracked_files = files,
+                                    None => {
+                                        print_error("Fail to load current commit");
+                                        return;
+                                    }
+                                }
+                            },
+                            None => {
+                                print_error("Fail to load current commity");
+                                return;
+                            }
+                        }
+                    }
+                },
+                Err(e) => head_tracked_files = HashMap::new(),
+            }
+            if !utilities::compare_map(&staging_tracked_files, &head_tracked_files) {
+                change = true;
+                print_output("Changes to be commit:");
+                for (file_path, _hash) in &staging_tracked_files {
+                    if !head_tracked_files.contains_key(file_path) {
+                        print_output(format!("\tAdded:   \t{}", file_path).as_str());
+                    }
+                }
+                for (file_path, _hash) in &head_tracked_files {
+                    if !staging_tracked_files.contains_key(file_path) {
+                        print_output(format!("\tDeleted: \t{}", file_path).as_str());
+                    }
+                }
+                for (file_path, hash) in &staging_tracked_files {
+                    if head_tracked_files.contains_key(file_path) && !hash.eq(&head_tracked_files[file_path]) {
+                        print_output(format!("\tModified:\t{}", file_path).as_str());
+                    }
+                }
+            }
+            // Comparing current WD with staging
+            let mut wd_files = HashMap::new();
+            for file_path in list_files(repo.get_working_path(), true, &vec![repo.get_repo_path()]).unwrap() {
+                let hash;
+                match read_file(&file_path) {
+                    Ok(content) => hash = utilities::hash(content.as_str()),
+                    Err(_e) => hash = "".to_string(),
+                }
+                wd_files.insert(
+                    get_relative_path_to_wd(repo.get_working_path(), file_path.as_str()), 
+                    hash
+                );
+            }
+            if !utilities::compare_map(&wd_files, &staging_tracked_files) {
+                change = true;
+                print_output("Changes not staged for commit:");
+                for (file_path, _hash) in &wd_files {
+                    if !staging_tracked_files.contains_key(file_path) {
+                        print_output(format!("\tAdded:   \t{}", file_path).as_str());
+                    }
+                }
+                for (file_path, _hash) in &staging_tracked_files {
+                    if !wd_files.contains_key(file_path) {
+                        print_output(format!("\tDeleted: \t{}", file_path).as_str());
+                    }
+                }
+                for (file_path, hash) in &wd_files {
+                    if staging_tracked_files.contains_key(file_path) && !hash.eq(&staging_tracked_files[file_path]) {
+                        print_output(format!("\tModified:\t{}", file_path).as_str());
+                    }
+                }
+            }
+            if (!change) {
+                print_output("Nothing to commit, working directory clean");
+            }
+        }
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
 pub fn heads() {
     //! Print out the current HEAD and the branch name of that HEAD, taken from the .dvcs folder
-    todo!()
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            match repo.read_HEAD() {
+                Ok(head) => print_output(format!("At commit {}", head).as_str()),
+                Err(e) => print_error(e.as_str()),
+            }
+        }
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
-pub fn diff(commit1: String, commit2: String) {
+pub fn diff(commit1: &str, commit2: &str) {
     //! Takes in two commit hashes and use the `display` module to print out the changes
     //! between the two files
     todo!()
 }
 
-pub fn cat(commit: String, file: String) {
+pub fn cat(commit: &str, file: &str) {
     //! Reads a file in the given commit (revision)
     todo!()
 }
 
 pub fn log() {
-    //! Use the `display` module
-    todo!()
+    //! Print the ancestors of the current commit
+    fn print_ancestor(repo: &Repository, commit_id: &str) {
+        //! Print the current commit, then recursively print the ancestor of this commit
+        if commit_id == "" {
+            return
+        }
+
+        match Commit::get(repo, commit_id) {
+            Some(commit) => {
+                print_output(format!("---\n{}", commit.pretty_print()).as_str());
+                print_ancestor(repo, commit.get_direct_parent_id());
+            }
+            None => print_error(format!("Invalid commit id: {}", commit_id).as_str())
+        }
+    }
+
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            match repo.get_current_commit_id() {
+                Ok(head_commit_id) => {
+                    print_output("History:");
+                    print_ancestor(&repo, head_commit_id.as_str());
+                }
+                Err(err) => print_error(format!("Something went wrong reading the current commit id:\n{}", err).as_str())
+            }
+        }
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
-pub fn checkout(commit: String) {
-    //! Edit the commit (branch) name in the HEAD file, and load the full directory of the
-    //! commit
-    todo!()
+pub fn checkout(commit_id: &str) {
+    //! Edit the commit (branch) name in the HEAD file, and load the full directory of the commit
+    // TODO: catch all errors
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            // get the Commit associated with the given commit_id
+            match Commit::get(&repo, commit_id) {
+                Some(commit) => {
+                    // load all the files of that commit
+                    match commit.load_tracked_files() {
+                        Some(tracked_file_list) => {
+                            // populate the staging area with the files of the commit
+                            for (file_path, blob_id) in &tracked_file_list {
+                                match Blob::get(&repo, blob_id.as_str()) {
+                                    Some(blob) => {
+                                        write_file(
+                                            blob.get_blob_content().unwrap().as_str(),
+                                            join_path(vec![repo.get_staging_path().as_str(), file_path.as_str()]).as_str()
+                                        );
+                                    }
+                                    None => print_error("Something went wrong creating the committed files")
+                                }
+                            }
+                            // populate staging tracked files
+                            repo.save_staging_tracked_files(tracked_file_list);
+                            // copy the staging area to the working path
+                            for file_path in list_files(repo.get_staging_path().as_str(), true, &vec![]).unwrap() {
+                                let dest = join_path(vec![repo.get_working_path(), diff_path(repo.get_staging_path().as_str() ,file_path.as_str()).unwrap().as_str()]);
+                                write_file(read_file(file_path.as_str()).unwrap().as_str(), dest.as_str()).expect("Something failed while writing to working area");
+                            }
+                        }
+                        None => print_error("Corrupt commit file")
+                    }
+                }
+                None => print_error("Invalid commit_id")
+            }
+        }
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
-pub fn merge(commit: String) {
+pub fn merge(commit: &str) {
     //! Merge the given commit with the current commit. Only works if the current directory
     //! does not have uncommited changes.
     todo!()
@@ -99,6 +347,96 @@ pub fn pull() {
 pub fn set_remote() {
     //! Sets the remote links for pull and push
     todo!()
+}
+
+pub fn add_track_file(path: &str) {
+    // sanity check
+    if !is_file(path) && !is_dir(path) {
+        print_error(format!("{} did not match any file or folder", path).as_str());
+        return;
+    }
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            let abs_path = pathbuf_to_string(get_absolute_path(path));
+            let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+            match copy(
+                abs_path.as_str(), 
+                Path::new(repo.get_staging_path().as_str())
+                    .join(&rel_path_to_wd.as_str())
+                    .to_str()
+                    .unwrap()) {
+
+                Ok(_v) => (),
+                Err(_e) => {
+                    print_error(format!("Fail to add {}", path).as_str());
+                    return;
+                },
+            }
+            if !is_dir(path) {
+                match repo.trackFile(rel_path_to_wd.as_str()) {
+                    Some(e) => print_error(e.as_str()),
+                    None => (),
+                }
+            } else {
+                match list_files(abs_path.as_str(), true, &vec![repo.get_repo_path()]) {
+                    Ok(files) => {
+                        for file_path in files {
+                            let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
+                            let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                            match repo.trackFile(rel_path_to_wd.as_str()) {
+                                Some(e) => print_error(e.as_str()),
+                                None => (),
+                            }
+                        }
+                    },
+                    Err(_e) => (),
+                }
+            }
+        },
+        None => print_error("Not a Goldfish folder")
+    }
+}
+
+pub fn delete_track_file(path: &str) {
+    // sanity check
+    if !is_file(path) && !is_dir(path) {
+        print_error(format!("{} did not match any file or folder", path).as_str());
+        return;
+    }
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            let abs_path = pathbuf_to_string(get_absolute_path(path));
+            let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+            match remove(Path::new(repo.get_staging_path().as_str())
+                            .join(&rel_path_to_wd.as_str())
+                            .to_str()
+                            .unwrap()) {
+                Ok(_v) => (),
+                Err(_e) => (),
+            }
+            if !is_dir(path) {
+                match repo.untrackFile(rel_path_to_wd.as_str()) {
+                    Some(e) => print_error(e.as_str()),
+                    None => (),
+                }
+            } else {
+                match list_files(abs_path.as_str(), true, &vec![repo.get_repo_path()]) {
+                    Ok(files) => {
+                        for file_path in files {
+                            let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
+                            let rel_path_to_wd = get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                            match repo.untrackFile(rel_path_to_wd.as_str()) {
+                                Some(e) => print_error(e.as_str()),
+                                None => (),
+                            }
+                        }
+                    },
+                    Err(_e) => (),
+                }
+            }
+        },
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
 #[cfg(test)]
