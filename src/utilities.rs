@@ -1,5 +1,4 @@
 //! # Common Utilities
-use nanoid::nanoid;
 use sha2::{Sha256, Digest};
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -14,10 +13,6 @@ pub fn hash(data: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(data);
     format!("{:X}", hasher.finalize())
-}
-
-pub fn generate_id() -> String {
-    nanoid!(10, &nanoid::alphabet::SAFE)
 }
 
 // True if equal

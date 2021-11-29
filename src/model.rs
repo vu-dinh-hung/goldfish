@@ -16,12 +16,6 @@ pub const BRANCHES_DIR: &str = "branches";
 pub const HEAD: &str = "HEAD";
 pub const TRACKEDFILES: &str = "tracked_files";
 
-// misc
-pub const DIGEST_SIZE: usize = 256;
-
-// Loc's old stuff
-const STATE: &str = ".goldfish/state.toml";
-pub const STAGING: &str = ".goldfish/staging/";
 
 fn resolve_reference(reference: &str) -> Option<String> {
     //! If given a branch name, resolve that branch name to the associated commit id
@@ -128,6 +122,19 @@ impl Repository {
         }
     }
 
+    pub fn get_file_content_hash(&self, rel_file_path_to_wd: &str) -> Option<String> {
+        match self.get_staging_tracked_files() {
+            Ok(map) => {
+                if map.contains_key(rel_file_path_to_wd) {
+                    Some(map[rel_file_path_to_wd].clone())
+                } else {
+                    None
+                }
+            },
+            Err(_e) => None,
+        }
+    }
+
     pub fn save_staging_tracked_files(&self, tracked_file: HashMap<String, String>) -> Option<String> {
         let mut raw_new_tracked_files = String::new();
         for (k, v) in tracked_file {
@@ -155,7 +162,7 @@ impl Repository {
         self.save_staging_tracked_files(tracked_file)
     }
 
-    pub fn untrackFile(&self, abs_file_path: &str) -> Option<String> {   
+    pub fn untrackFile(&self, abs_file_path: &str) -> Option<String> {
         // parse tracked files
         let mut tracked_file;
         match self.get_staging_tracked_files() {
