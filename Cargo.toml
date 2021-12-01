@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 toml = "0.5.8"
-thrussh = "0.33.5"
+ssh2 = "0.9.3"
 regex = "1"
 sha2 = "0.9.8"
 pathdiff = "0.1.0"
