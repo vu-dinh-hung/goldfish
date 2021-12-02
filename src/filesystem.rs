@@ -1,27 +1,24 @@
-
-pub fn test_1_read_file(){
-	asserteq!(dvcs.read_file(fileContainingHelloWorld), Ok("Hello World"))
-}
-pub fn test_2_write_file(){
-	asserteq!(dvcs.write_file(invalidpath, somedata), Err("InvalidPathError"))
-}
-pub fn test_3_move_file(){
-
-	asserteq!(dvcs.move_file(sourcepath, destpath, c=true), true)
-	asserteq!(dvcs.read_file(sourcepath), dvcs.read_file(destpath))
-}
-pub fn test_4_remove_file(){
-	asserteq!(dvcs.remove_file(path, r=true), true)
-	pathprime = path + "/filename"
-	asserteq!(dvcs.write_file(pathprime), Err("InvalidPathError"))
-}
+// pub fn test_1_read_file(){
+// 	assert_eq!(dvcs.read_file(fileContainingHelloWorld), Ok("Hello World"))
+// }
+// pub fn test_2_write_file(){
+// 	assert_eq!(dvcs.write_file(invalidpath, somedata), Err("InvalidPathError"))
+// }
+// pub fn test_3_move_file(){
+// 	assert_eq!(dvcs.move_file(sourcepath, destpath, c=true), true)
+// 	assert_eq!(dvcs.read_file(sourcepath), dvcs.read_file(destpath))
+// }
+// pub fn test_4_remove_file(){
+// 	assert_eq!(dvcs.remove_file(path, r=true), true)
+// 	pathprime = path + "/filename"
+// 	assert_eq!(dvcs.write_file(pathprime), Err("InvalidPathError"))
+// }
 
 //! Filesystem
+use pathdiff;
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::fs;
-use pathdiff;
-
 
 pub fn pathbuf_to_string(path: PathBuf) -> String {
     //! Unsafe function (but mostly safe practically) to convert a PathBuf object into a String
@@ -73,11 +70,14 @@ pub fn write_file(data: &str, path: &str) -> io::Result<()> {
     match parent_folder {
         Some(folder) => {
             if !is_dir(folder.as_str()) {
-                create_dir(folder.as_str())?  // return early with the IO error if this errors out
+                create_dir(folder.as_str())? // return early with the IO error if this errors out
             }
             fs::write(path, data)
         }
-        None => Err(io::Error::new(io::ErrorKind::Other, "Cannot create the specified path"))
+        None => Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Cannot create the specified path",
+        )),
     }
 }
 
@@ -90,8 +90,12 @@ pub fn join_path(paths: Vec<&str>) -> String {
     //! Join the paths into a path string (in the format of the host OS)
     //! Currently panics if the conversion from OsString to String (after joining)
     //! fails. This will be fixed to be safer later.
-    paths.iter().fold(Path::new("").to_path_buf(), |acc, path| acc.join(path))
-        .into_os_string().into_string().unwrap()
+    paths
+        .iter()
+        .fold(Path::new("").to_path_buf(), |acc, path| acc.join(path))
+        .into_os_string()
+        .into_string()
+        .unwrap()
 }
 
 pub fn create_dir(path: &str) -> io::Result<()> {
@@ -110,7 +114,11 @@ pub fn remove(path: &str) -> io::Result<()> {
 }
 
 pub fn list(path: &str) -> io::Result<Vec<String>> {
-    fs::read_dir(path).map(|iterator| iterator.map(|dir_entry_result| pathbuf_to_string(dir_entry_result.unwrap().path())).collect())
+    fs::read_dir(path).map(|iterator| {
+        iterator
+            .map(|dir_entry_result| pathbuf_to_string(dir_entry_result.unwrap().path()))
+            .collect()
+    })
 }
 
 pub fn copy(source: &str, dest: &str) -> io::Result<()> {
@@ -118,11 +126,8 @@ pub fn copy(source: &str, dest: &str) -> io::Result<()> {
         for entry in fs::read_dir(source)? {
             let entry = entry?;
             match copy(
-                entry.path().to_str().unwrap(), 
-                Path::new(dest)
-                    .join(entry.file_name())
-                    .to_str()
-                    .unwrap()
+                entry.path().to_str().unwrap(),
+                Path::new(dest).join(entry.file_name()).to_str().unwrap(),
             ) {
                 Ok(_x) => (),
                 Err(e) => return Err(e),
@@ -155,13 +160,13 @@ pub fn is_file(path: &str) -> bool {
 
 pub fn parent(path: &str) -> Option<String> {
     //! Get the parent path of the given path
-    Path::new(path).parent()?.to_str().map(|path_string| path_string.to_string())
+    Path::new(path)
+        .parent()?
+        .to_str()
+        .map(|path_string| path_string.to_string())
 }
-
-
 
 pub fn canonicalize(path: &str) -> io::Result<String> {
     //! Return the full canonical path for the given path
     fs::canonicalize(Path::new(path)).map(pathbuf_to_string)
 }
-
