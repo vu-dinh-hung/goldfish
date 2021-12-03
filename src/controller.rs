@@ -231,7 +231,7 @@ pub fn status() {
                     Err(_e) => hash = "".to_string(),
                 }
                 wd_files.insert(
-                    get_relative_path_to_wd(repo.get_working_path(), file_path.as_str()),
+                    get_relative_path_from_base(repo.get_working_path(), file_path.as_str()),
                     hash,
                 );
             }
@@ -475,7 +475,7 @@ pub fn add_track_file(path: &str) {
         Some(repo) => {
             let abs_path = pathbuf_to_string(get_absolute_path(path));
             let rel_path_to_wd =
-                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
             if !is_dir(path) {
                 copy_and_mark_fike_tracked(&repo, abs_path.as_str(), rel_path_to_wd.as_str());
             } else {
@@ -484,7 +484,7 @@ pub fn add_track_file(path: &str) {
                         for file_path in files {
                             let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
                             let rel_path_to_wd =
-                                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
                             copy_and_mark_fike_tracked(
                                 &repo,
                                 abs_path.as_str(),
@@ -510,7 +510,7 @@ pub fn delete_track_file(path: &str) {
         Some(repo) => {
             let abs_path = pathbuf_to_string(get_absolute_path(path));
             let rel_path_to_wd =
-                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
             match remove(
                 Path::new(repo.get_staging_path().as_str())
                     .join(&rel_path_to_wd.as_str())
@@ -531,7 +531,7 @@ pub fn delete_track_file(path: &str) {
                         for file_path in files {
                             let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
                             let rel_path_to_wd =
-                                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
                             match repo.untrack_file(rel_path_to_wd.as_str()) {
                                 Some(e) => print_error(e.as_str()),
                                 None => (),

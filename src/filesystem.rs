@@ -44,8 +44,8 @@ pub fn get_absolute_path(path: &str) -> PathBuf {
     return fs::canonicalize(path).unwrap();
 }
 
-pub fn get_relative_path_to_wd(base: &str, rel_path: &str) -> String {
-    let abs_path = pathbuf_to_string(get_absolute_path(rel_path));
+pub fn get_relative_path_from_base(base: &str, path: &str) -> String {
+    let abs_path = pathbuf_to_string(get_absolute_path(path));
     return diff_path(base, abs_path.as_str()).unwrap();
 }
 
