@@ -231,7 +231,7 @@ pub fn status() {
                     Err(_e) => hash = "".to_string(),
                 }
                 wd_files.insert(
-                    get_relative_path_to_wd(repo.get_working_path(), file_path.as_str()),
+                    get_relative_path_from_base(repo.get_working_path(), file_path.as_str()),
                     hash,
                 );
             }
@@ -398,9 +398,38 @@ pub fn diff(commit_id1: &str, commit_id2: &str) {
     }
 }
 
-pub fn cat(commit: &str, file: &str) {
+pub fn cat(commit_id: &str, file: &str) {
     //! Reads a file in the given commit (revision)
-    todo!()
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {  // found repo
+            match Commit::get(&repo, commit_id) {
+                Some(commit) => {  // found commit
+                    match commit.load_tracked_files() {
+                        Some(files_lookup) => {  // found committed file list
+                            for (committed_file, blob_id) in &files_lookup {
+                                if compare_paths(committed_file, file) {
+                                    match Blob::get(&repo, blob_id) {
+                                        Some(blob) => {
+                                            match blob.get_blob_content() {
+                                                Ok(content) => {
+                                                    print_output(format!("File data for {}:\n{}", file, content).as_str());
+                                                }
+                                                Err(_) => print_error("Blob object is corrupted")
+                                            }
+                                        }
+                                        None => print_error("Blob object is corrupted")
+                                    }
+                                }
+                            }
+                        }
+                        None => print_error("Commit object is corrupted")
+                    }
+                }
+                None => print_error(format!("Invalid commit id: {}", commit_id).as_str())
+            }
+        }
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
 pub fn log() {
@@ -564,7 +593,7 @@ pub fn add_track_file(path: &str) {
         Some(repo) => {
             let abs_path = pathbuf_to_string(get_absolute_path(path));
             let rel_path_to_wd =
-                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
             if !is_dir(path) {
                 copy_and_mark_fike_tracked(&repo, abs_path.as_str(), rel_path_to_wd.as_str());
             } else {
@@ -573,7 +602,7 @@ pub fn add_track_file(path: &str) {
                         for file_path in files {
                             let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
                             let rel_path_to_wd =
-                                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
                             copy_and_mark_fike_tracked(
                                 &repo,
                                 abs_path.as_str(),
@@ -599,7 +628,7 @@ pub fn delete_track_file(path: &str) {
         Some(repo) => {
             let abs_path = pathbuf_to_string(get_absolute_path(path));
             let rel_path_to_wd =
-                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
             match remove(
                 Path::new(repo.get_staging_path().as_str())
                     .join(&rel_path_to_wd.as_str())
@@ -620,7 +649,7 @@ pub fn delete_track_file(path: &str) {
                         for file_path in files {
                             let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
                             let rel_path_to_wd =
-                                get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
+                                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
                             match repo.untrack_file(rel_path_to_wd.as_str()) {
                                 Some(e) => print_error(e.as_str()),
                                 None => (),
