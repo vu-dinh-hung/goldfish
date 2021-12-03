@@ -1,5 +1,5 @@
 //! # Controller
-use crate::display::{print_error, print_output};
+use crate::display::{print_error, print_output, print_output_string, print_output_vec_string};
 use crate::filesystem::*;
 use crate::model;
 use crate::model::{Blob, Commit, Repository};
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub fn init() {
-    //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
+    // Create a new .dvcs folder inside the current directory (if it doesn't already exist)
     let current_directory = pathbuf_to_string(std::env::current_dir().unwrap());
     match Repository::find(current_directory.as_str()) {
         None => {
@@ -275,9 +275,127 @@ pub fn heads() {
     }
 }
 
-pub fn diff(commit1: &str, commit2: &str) {
-    //! Takes in two commit hashes and use the `display` module to print out the changes
-    //! between the two files
+pub fn diff(commit_id1: &str, commit_id2: &str) {
+    fn get_diff_files(tracked_file_list1: &HashMap<String, String>, 
+                        tracked_file_list2: &HashMap<String, String>) -> Vec<String> {
+        let mut result: Vec<String> = vec![];
+        for (file_path1, _) in tracked_file_list1 {
+            let mut is_file_in: bool = false;
+            for (file_path2, _) in tracked_file_list2 {
+                if file_path1 == file_path2 {
+                    is_file_in = true;
+                    break;
+                }
+            }
+            if !is_file_in {
+                result.push(file_path1.to_string());
+            }
+        }
+        result
+    }
+    let mut result: Vec<String> = vec![];
+    // Takes in two commit hashes and use the `display` module to print out the changes
+    // between the two files
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            // get the Commit associated with the given commit_id
+            match Commit::get(&repo, commit_id1) {
+                Some(commit1) => {
+                    match Commit::get(&repo, commit_id2) {
+                        Some(commit2) => {
+                            // load all the files of that commit
+                            match commit1.load_tracked_files() {
+                                Some(tracked_file_list1) => {
+                                    match commit2.load_tracked_files() {
+                                        Some(tracked_file_list2) => {
+                                            let added_files = get_diff_files(&tracked_file_list2, &tracked_file_list1);
+                                            let removed_files = get_diff_files(&tracked_file_list1, &tracked_file_list2);
+                                            if !added_files.is_empty() {
+                                                result.push(format!("Added files from commit {}:", commit_id1));
+                                                result.extend(added_files);
+                                            }
+                                            if !removed_files.is_empty() {
+                                                result.push(format!("Removed files from commit {}:", commit_id1));
+                                                result.extend(removed_files);
+                                            }
+                                            for (file_path1, blob_id1) in &tracked_file_list1 {
+                                                let mut is_file_in: bool = false;
+                                                let mut blob_id2: String = "".to_string();
+                                                for (file_path2, temp_blob_id) in &tracked_file_list2 {
+                                                    if file_path1 == file_path2 {
+                                                        is_file_in = true;
+                                                        blob_id2 = temp_blob_id.to_string();
+                                                        break;
+                                                    }
+                                                }
+                                                if is_file_in {
+                                                    match Blob::get(&repo, blob_id1.as_str()) {
+                                                        Some(blob1) => {
+                                                            match Blob::get(&repo, blob_id2.as_str()) {
+                                                                Some(blob2) => {
+                                                                    match blob1.get_blob_content() {
+                                                                        Ok(content1) => {
+                                                                            match blob2.get_blob_content() {
+                                                                                Ok(content2) => {
+                                                                                    let mut has_diff: bool = false;
+                                                                                    let mut temp_result: Vec<String> = vec![];
+                                                                                    let file_vec1: Vec<String> = content1.lines().collect::<Vec<&str>>()
+                                                                                                                        .iter().map(|s| s.to_string()).collect();
+                                                                                    let file_vec2: Vec<String> = content2.lines().collect::<Vec<&str>>()
+                                                                                                                        .iter().map(|s| s.to_string()).collect();
+                                                                                    let diff_content = utilities::diff(file_vec1, file_vec2);
+                                                                                    for (_, content) in diff_content.iter().enumerate() {
+                                                                                        if content.0 == "+" || content.0 == "-" {
+                                                                                            has_diff = true;
+                                                                                            temp_result.push(format!("{} {}", content.0, content.1));
+                                                                                        } else {
+                                                                                            temp_result.push(format!("{}", content.1));
+                                                                                        }
+                                                                                        
+                                                                                    }
+                                                                                    if has_diff {
+                                                                                        result.push(format!("Differences in file {}:", file_path1));
+                                                                                        result.extend(temp_result);
+                                                                                    }
+                                                                                }
+                                                                                Err(_) => print_error("File not found"),
+                                                                            }
+                                                                        }
+                                                                        Err(_) => print_error("File not found"),
+                                                                    }
+                                                                }
+                                                                None => print_error(
+                                                                    "Something went wrong reading file",
+                                                                ),
+                                                            }
+                                                            
+                                                        }
+                                                        None => print_error(
+                                                            "Something went wrong reading file",
+                                                        ),
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        None => print_error("Corrupted second commit file"),
+                                    }
+                                }
+                                None => print_error("Corrupted first commit file"),
+                            }
+                        }
+                        None => print_error("Invalid second commit id"),
+                    }
+                }
+                None => print_error("Invalid first commit id"),
+            }
+            if result.is_empty() {
+                print_output("Two commits are identical");
+            } else {
+                print_output_vec_string(result);
+            }
+        }
+        None => print_error("Cannot find the repository"),
+    }
 }
 
 pub fn cat(commit: &str, file: &str) {

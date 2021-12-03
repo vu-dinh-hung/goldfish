@@ -15,6 +15,16 @@ pub fn print_output_string(message: String) {
 }
 
 /*
+    Print output message (vector of String struct) to terminal
+    @param message: output message sent to user
+*/
+pub fn print_output_vec_string(messages: Vec<String>) {
+    for message in messages {
+        println!("{}", message);
+    }
+}
+
+/*
     Print error message (string literal) to terminal
     @param message: error message sent to user
 */
