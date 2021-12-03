@@ -267,7 +267,7 @@ pub fn status() {
 pub fn heads() {
     //! Print out the current HEAD and the branch name of that HEAD, taken from the .dvcs folder
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
-        Some(repo) => match repo.read_HEAD() {
+        Some(repo) => match repo.read_head() {
             Ok(head) => print_output(format!("At commit {}", head).as_str()),
             Err(e) => print_error(e.as_str()),
         },
@@ -278,7 +278,6 @@ pub fn heads() {
 pub fn diff(commit1: &str, commit2: &str) {
     //! Takes in two commit hashes and use the `display` module to print out the changes
     //! between the two files
-    todo!()
 }
 
 pub fn cat(commit: &str, file: &str) {
@@ -431,7 +430,7 @@ fn copy_and_mark_fike_tracked(repo: &Repository, abs_path: &str, rel_path_to_wd:
         }
     }
     // add/update file in tracked list
-    match repo.trackFile(rel_path_to_wd) {
+    match repo.track_file(rel_path_to_wd) {
         Some(e) => print_error(e.as_str()),
         None => (),
     }
@@ -493,7 +492,7 @@ pub fn delete_track_file(path: &str) {
                 Err(_e) => (),
             }
             if !is_dir(path) {
-                match repo.untrackFile(rel_path_to_wd.as_str()) {
+                match repo.untrack_file(rel_path_to_wd.as_str()) {
                     Some(e) => print_error(e.as_str()),
                     None => (),
                 }
@@ -504,7 +503,7 @@ pub fn delete_track_file(path: &str) {
                             let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
                             let rel_path_to_wd =
                                 get_relative_path_to_wd(repo.get_working_path(), abs_path.as_str());
-                            match repo.untrackFile(rel_path_to_wd.as_str()) {
+                            match repo.untrack_file(rel_path_to_wd.as_str()) {
                                 Some(e) => print_error(e.as_str()),
                                 None => (),
                             }
