@@ -1,5 +1,5 @@
 //! # Controller
-use crate::display::{print_error, print_output, print_output_string, print_output_vec_string};
+use crate::display::{print_error, print_output, print_output_string, print_output_vec_string, print_error_string};
 use crate::filesystem::*;
 use crate::model;
 use crate::model::{Blob, Commit, Repository};
@@ -19,11 +19,10 @@ pub fn init() {
                     assert!(Repository::find(current_directory.as_str()).is_some());
                     let repo = Repository::find(current_directory.as_str()).unwrap();
                     for file in [model::HEAD, model::TRACKEDFILES] {
-                        write_file("", join_path(vec![repo.get_repo_path(), file]).as_str())
-                            .expect(
-                                format!("Something went wrong creating the `{}` file", file)
-                                    .as_str(),
-                            );
+                        match write_file("", join_path(vec![repo.get_repo_path(), file]).as_str()) {
+                            Ok(_) => {}
+                            Err(_) => return print_error_string(format!("Something went wrong creating the `{}` file", file)),
+                        }
                     }
                     for folder in [
                         model::BLOBS_DIR,
@@ -31,20 +30,17 @@ pub fn init() {
                         model::COMMITS_DIR,
                         model::STAGING_DIR,
                     ] {
-                        create_dir(join_path(vec![repo.get_repo_path(), folder]).as_str()).expect(
-                            format!("Something went wrong creating the `{}` directory", folder)
-                                .as_str(),
-                        );
+                        match create_dir(join_path(vec![repo.get_repo_path(), folder]).as_str()) {
+                            Ok(_) => {}
+                            Err(_) => print_error_string(format!("Something went wrong creating the `{}` directory", folder)),
+                        }
                     }
                 }
-                Err(_) => {
-                    print_error("Something went wrong creating the .goldfish folder");
-                    return;
-                }
+                Err(_) => return print_error("Something went wrong creating the .goldfish folder"),
             }
             print_output("Successfully initialized new repository")
         }
-        Some(_) => print_error("Already a Goldfish folder"),
+        Some(_) => return print_error("Already a Goldfish folder"),
     }
 }
 
@@ -61,10 +57,7 @@ pub fn commit() {
             let staging_tracked_files;
             match repo.get_staging_tracked_files() {
                 Ok(files) => staging_tracked_files = files,
-                Err(e) => {
-                    print_error(e.as_str());
-                    return;
-                }
+                Err(e) => return print_error(e.as_str()),
             }
             let head_tracked_files;
             match repo.get_current_commit_id() {
@@ -75,23 +68,16 @@ pub fn commit() {
                         match Commit::get(&repo, commit_id.as_str()) {
                             Some(commit) => match commit.load_tracked_files() {
                                 Some(files) => head_tracked_files = files,
-                                None => {
-                                    print_error("Fail to load current commitx");
-                                    return;
-                                }
+                                None => return print_error("Fail to load current commitx"),
                             },
-                            None => {
-                                print_error("Fail to load current commity");
-                                return;
-                            }
+                            None => return print_error("Fail to load current commity"),
                         }
                     }
                 }
                 Err(e) => head_tracked_files = HashMap::new(),
             }
             if utilities::compare_map(&staging_tracked_files, &head_tracked_files) {
-                print_output("Nothing to commit");
-                return;
+                print_output("Nothing to commit")
             }
             // list files in staging area
             match list_files(repo.get_staging_path().as_str(), true, &vec![]) {
@@ -99,19 +85,20 @@ pub fn commit() {
                     let mut file_list = vec![];
                     // create blobs
                     for file_path in files {
-                        let file_content =
-                            read_file(file_path.as_str()).expect("This file path should be valid");
-                        match Blob::create(&repo, file_content.as_str()) {
-                            Ok(blob) => file_list.push((
-                                diff_path(repo.get_staging_path().as_str(), file_path.as_str())
-                                    .unwrap(),
-                                blob.get_id().to_string(),
-                            )),
-                            Err(err) => {
-                                print_error(format!("Something went wrong creating blob objects for the commit:\n{}", err).as_str());
-                                return;
+                        match read_file(file_path.as_str()) {
+                            Ok(file_content) => {
+                                match Blob::create(&repo, file_content.as_str()) {
+                                    Ok(blob) => file_list.push((
+                                        diff_path(repo.get_staging_path().as_str(), file_path.as_str())
+                                            .unwrap(),
+                                        blob.get_id().to_string(),
+                                    )),
+                                    Err(err) => return print_error_string(format!("Something went wrong creating blob objects for the commit:\n{}", err)),
+                                }
                             }
+                            Err(_) => return print_error("This file path should be valid"),
                         }
+                        
                     }
                     // clean staging
                     remove(repo.get_staging_path().as_str()).unwrap();
@@ -121,10 +108,7 @@ pub fn commit() {
                             let tracked_files;
                             match repo.get_staging_tracked_files() {
                                 Ok(files) => tracked_files = files,
-                                Err(e) => {
-                                    print_error(e.as_str());
-                                    return;
-                                }
+                                Err(e) => return print_error(e.as_str()),
                             }
                             match Commit::create(&repo, current_commit_id, vec![], tracked_files) {
                                 Ok(commit) => print_output(
@@ -139,27 +123,21 @@ pub fn commit() {
                                 ),
                             }
                         }
-                        Err(err) => {
-                            print_error(
-                                format!(
-                                    "Something went wrong reading the current commit id:\n{}",
-                                    err
-                                )
-                                .as_str(),
-                            );
-                            return;
-                        }
+                        Err(err) => return print_error(
+                                        format!(
+                                            "Something went wrong reading the current commit id:\n{}",
+                                            err
+                                        )
+                                        .as_str(),
+                                    ),
                     }
                 }
-                Err(_) => {
-                    print_error(
-                        "No file found in staging area. Please `add` files before committing",
-                    );
-                    return;
-                }
+                Err(_) => return print_error(
+                                "No file found in staging area. Please `add` files before committing",
+                            ),
             }
         }
-        None => print_error("Not a Goldfish folder"),
+        None => return print_error("Not a Goldfish folder"),
     }
 }
 
@@ -171,10 +149,7 @@ pub fn status() {
             let staging_tracked_files;
             match repo.get_staging_tracked_files() {
                 Ok(files) => staging_tracked_files = files,
-                Err(e) => {
-                    print_error(e.as_str());
-                    return;
-                }
+                Err(e) => return print_error(e.as_str()),
             }
             let head_tracked_files;
             match repo.get_current_commit_id() {
@@ -185,15 +160,9 @@ pub fn status() {
                         match Commit::get(&repo, commit_id.as_str()) {
                             Some(commit) => match commit.load_tracked_files() {
                                 Some(files) => head_tracked_files = files,
-                                None => {
-                                    print_error("Fail to load current commit");
-                                    return;
-                                }
+                                None => return print_error("Fail to load current commit"),
                             },
-                            None => {
-                                print_error("Fail to load current commity");
-                                return;
-                            }
+                            None => return print_error("Fail to load current commity"),
                         }
                     }
                 }
@@ -260,7 +229,7 @@ pub fn status() {
                 print_output("Nothing to commit, working directory clean");
             }
         }
-        None => print_error("Not a Goldfish folder"),
+        None => return print_error("Not a Goldfish folder"),
     }
 }
 
@@ -269,9 +238,9 @@ pub fn heads() {
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => match repo.read_head() {
             Ok(head) => print_output(format!("At commit {}", head).as_str()),
-            Err(e) => print_error(e.as_str()),
+            Err(e) => return print_error(e.as_str()),
         },
-        None => print_error("Not a Goldfish folder"),
+        None => return print_error("Not a Goldfish folder"),
     }
 }
 
@@ -358,35 +327,35 @@ pub fn diff(commit_id1: &str, commit_id2: &str) {
                                                                                         result.extend(temp_result);
                                                                                     }
                                                                                 }
-                                                                                Err(_) => print_error("File not found"),
+                                                                                Err(_) => return print_error("File not found"),
                                                                             }
                                                                         }
-                                                                        Err(_) => print_error("File not found"),
+                                                                        Err(_) => return print_error("File not found"),
                                                                     }
                                                                 }
-                                                                None => print_error(
+                                                                None => return print_error(
                                                                     "Something went wrong reading file",
                                                                 ),
                                                             }
                                                             
                                                         }
-                                                        None => print_error(
+                                                        None => return print_error(
                                                             "Something went wrong reading file",
                                                         ),
                                                     }
                                                 }
                                             }
                                         }
-                                        None => print_error("Corrupted second commit file"),
+                                        None => return print_error("Corrupted second commit file"),
                                     }
                                 }
-                                None => print_error("Corrupted first commit file"),
+                                None => return print_error("Corrupted first commit file"),
                             }
                         }
-                        None => print_error("Invalid second commit id"),
+                        None => return print_error("Invalid second commit id"),
                     }
                 }
-                None => print_error("Invalid first commit id"),
+                None => return print_error("Invalid first commit id"),
             }
             if result.is_empty() {
                 print_output("Two commits are identical");
@@ -394,7 +363,7 @@ pub fn diff(commit_id1: &str, commit_id2: &str) {
                 print_output_vec_string(result);
             }
         }
-        None => print_error("Cannot find the repository"),
+        None => return print_error("Cannot find the repository"),
     }
 }
 
@@ -414,21 +383,21 @@ pub fn cat(commit_id: &str, file: &str) {
                                                 Ok(content) => {
                                                     print_output(format!("File data for {}:\n{}", file, content).as_str());
                                                 }
-                                                Err(_) => print_error("Blob object is corrupted")
+                                                Err(_) => return print_error("Blob object is corrupted")
                                             }
                                         }
-                                        None => print_error("Blob object is corrupted")
+                                        None => return print_error("Blob object is corrupted")
                                     }
                                 }
                             }
                         }
-                        None => print_error("Commit object is corrupted")
+                        None => return print_error("Commit object is corrupted")
                     }
                 }
-                None => print_error(format!("Invalid commit id: {}", commit_id).as_str())
+                None => return print_error(format!("Invalid commit id: {}", commit_id).as_str())
             }
         }
-        None => print_error("Not a Goldfish folder")
+        None => return print_error("Not a Goldfish folder")
     }
 }
 
@@ -445,7 +414,7 @@ pub fn log() {
                 print_output(format!("---\n{}", commit.pretty_print()).as_str());
                 print_ancestor(repo, commit.get_direct_parent_id());
             }
-            None => print_error(format!("Invalid commit id: {}", commit_id).as_str()),
+            None => return print_error(format!("Invalid commit id: {}", commit_id).as_str()),
         }
     }
 
@@ -455,7 +424,7 @@ pub fn log() {
                 print_output("History:");
                 print_ancestor(&repo, head_commit_id.as_str());
             }
-            Err(err) => print_error(
+            Err(err) => return print_error(
                 format!(
                     "Something went wrong reading the current commit id:\n{}",
                     err
@@ -491,7 +460,7 @@ pub fn checkout(commit_id: &str) {
                                             .as_str(),
                                         );
                                     }
-                                    None => print_error(
+                                    None => return print_error(
                                         "Something went wrong creating the committed files",
                                     ),
                                 }
@@ -508,22 +477,24 @@ pub fn checkout(commit_id: &str) {
                                         .unwrap()
                                         .as_str(),
                                 ]);
-                                write_file(
+                                match write_file(
                                     read_file(file_path.as_str()).unwrap().as_str(),
                                     dest.as_str(),
-                                )
-                                .expect("Something failed while writing to working area");
+                                ) {
+                                    Ok(_) => {}
+                                    Err(_) => return print_error("Something failed while writing to working area")
+                                }
                             }
                             // clean staging
                             remove(repo.get_staging_path().as_str()).unwrap();
                         }
-                        None => print_error("Corrupt commit file"),
+                        None => return print_error("Corrupt commit file"),
                     }
                 }
-                None => print_error("Invalid commit_id"),
+                None => return print_error("Invalid commit_id"),
             }
         }
-        None => print_error("Not a Goldfish folder"),
+        None => return print_error("Not a Goldfish folder"),
     }
 }
 
@@ -571,14 +542,11 @@ fn copy_and_mark_fike_tracked(repo: &Repository, abs_path: &str, rel_path_to_wd:
             .unwrap(),
     ) {
         Ok(_v) => (),
-        Err(_e) => {
-            print_error(format!("Fail to add {}", abs_path).as_str());
-            return;
-        }
+        Err(_e) => return print_error(format!("Fail to add {}", abs_path).as_str()),
     }
     // add/update file in tracked list
     match repo.track_file(rel_path_to_wd) {
-        Some(e) => print_error(e.as_str()),
+        Some(e) => return print_error(e.as_str()),
         None => (),
     }
 }
@@ -586,8 +554,7 @@ fn copy_and_mark_fike_tracked(repo: &Repository, abs_path: &str, rel_path_to_wd:
 pub fn add_track_file(path: &str) {
     // sanity check
     if !is_file(path) && !is_dir(path) {
-        print_error(format!("{} did not match any file or folder", path).as_str());
-        return;
+        return print_error(format!("{} did not match any file or folder", path).as_str());
     }
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
@@ -621,8 +588,7 @@ pub fn add_track_file(path: &str) {
 pub fn delete_track_file(path: &str) {
     // sanity check
     if !is_file(path) && !is_dir(path) {
-        print_error(format!("{} did not match any file or folder", path).as_str());
-        return;
+        return print_error(format!("{} did not match any file or folder", path).as_str());
     }
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
@@ -640,7 +606,7 @@ pub fn delete_track_file(path: &str) {
             }
             if !is_dir(path) {
                 match repo.untrack_file(rel_path_to_wd.as_str()) {
-                    Some(e) => print_error(e.as_str()),
+                    Some(e) => return print_error(e.as_str()),
                     None => (),
                 }
             } else {
@@ -660,7 +626,7 @@ pub fn delete_track_file(path: &str) {
                 }
             }
         }
-        None => print_error("Not a Goldfish folder"),
+        None => return print_error("Not a Goldfish folder"),
     }
 }
 
