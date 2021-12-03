@@ -280,9 +280,38 @@ pub fn diff(commit1: &str, commit2: &str) {
     //! between the two files
 }
 
-pub fn cat(commit: &str, file: &str) {
+pub fn cat(commit_id: &str, file: &str) {
     //! Reads a file in the given commit (revision)
-    todo!()
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {  // found repo
+            match Commit::get(&repo, commit_id) {
+                Some(commit) => {  // found commit
+                    match commit.load_tracked_files() {
+                        Some(files_lookup) => {  // found committed file list
+                            for (committed_file, blob_id) in &files_lookup {
+                                if compare_paths(committed_file, file) {
+                                    match Blob::get(&repo, blob_id) {
+                                        Some(blob) => {
+                                            match blob.get_blob_content() {
+                                                Ok(content) => {
+                                                    print_output(format!("File data for {}:\n{}", file, content).as_str());
+                                                }
+                                                Err(_) => print_error("Blob object is corrupted")
+                                            }
+                                        }
+                                        None => print_error("Blob object is corrupted")
+                                    }
+                                }
+                            }
+                        }
+                        None => print_error("Commit object is corrupted")
+                    }
+                }
+                None => print_error(format!("Invalid commit id: {}", commit_id).as_str())
+            }
+        }
+        None => print_error("Not a Goldfish folder")
+    }
 }
 
 pub fn log() {

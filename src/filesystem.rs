@@ -25,6 +25,21 @@ pub fn pathbuf_to_string(path: PathBuf) -> String {
     path.into_os_string().into_string().unwrap()
 }
 
+pub fn compare_paths(path1: &str, path2: &str) -> bool {
+    //! Compare two paths. Returns `false` if either path is invalid.
+    match diff_path(".", path1) {
+        Some(rel_path_1) => {
+            match diff_path(".", path2) {
+                Some(rel_path_2) => {
+                    return rel_path_1 == rel_path_2
+                }
+                None => return false
+            }
+        }
+        None => return false
+    }
+}
+
 pub fn get_absolute_path(path: &str) -> PathBuf {
     return fs::canonicalize(path).unwrap();
 }
