@@ -1,23 +1,25 @@
 // Crate for serializing
 use ssh2::Session;
+use std::io::prelude::*;
 use std::net::TcpStream;
 use toml::Value;
 
+
 #[test]
-pub fn test_1_inspect_ssh_agent() {
-    // Almost all APIs require a `Session` to be available
-    let session = Session::new().unwrap();
-    let mut agent = session.agent().unwrap();
-
-    // Connect the agent and request a list of identities
-    agent.connect().unwrap();
-    agent.list_identities().unwrap();
-    println!("+++++++++++++++++++++++++");
-
-    for identity in agent.identities().unwrap() {
-        println!("{}", identity.comment());
-        let pubkey = identity.blob();
-    }
+pub fn test_1_connect_ssh() {
+    let tcp = TcpStream::connect("127.0.0.1:22").unwrap();
+    let mut session = Session::new().unwrap();
+    session.set_tcp_stream(tcp);
+    session.handshake().unwrap();
+    session.userauth_password("username", "password").unwrap();
+    let mut channel = session.channel_session().unwrap();
+    channel.exec("ls").unwrap();
+    let mut s = String::new();
+    channel.read_to_string(&mut s).unwrap();
+    println!("{}", s);
+    channel.wait_close().ok();
+    println!("{}", channel.exit_status().unwrap());
+    // assert!(session.authenticated());
 }
 
 // pub fn test_2_write_file(){
