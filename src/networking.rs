@@ -7,11 +7,14 @@ use toml::Value;
 
 #[test]
 pub fn test_1_connect_ssh() {
+    // Replace with IP address of remote
     let tcp = TcpStream::connect("127.0.0.1:22").unwrap();
     let mut session = Session::new().unwrap();
     session.set_tcp_stream(tcp);
     session.handshake().unwrap();
+    // Replace with login credentials
     session.userauth_password("username", "password").unwrap();
+    assert!(session.authenticated());
     let mut channel = session.channel_session().unwrap();
     channel.exec("ls").unwrap();
     let mut s = String::new();
@@ -19,7 +22,7 @@ pub fn test_1_connect_ssh() {
     println!("{}", s);
     channel.wait_close().ok();
     println!("{}", channel.exit_status().unwrap());
-    // assert!(session.authenticated());
+    
 }
 
 // pub fn test_2_write_file(){
