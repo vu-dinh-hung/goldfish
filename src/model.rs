@@ -85,15 +85,15 @@ impl Repository {
         filesystem::join_path(vec![&self.repo_path, HEAD])
     }
 
-    pub fn read_HEAD(&self) -> Result<String, String> {
+    pub fn read_head(&self) -> Result<String, String> {
         match filesystem::read_file(&self.get_head_path()) {
-            Ok(goldfish_HEAD) => Ok(goldfish_HEAD),
+            Ok(goldfish_head) => Ok(goldfish_head),
             Err(_e) => Err(String::from("Fail to load HEAD file"))
         }
     }
 
-    pub fn write_HEAD(&self, goldfish_HEAD: String) -> Option<String> {
-        match filesystem::write_file(goldfish_HEAD.as_str(), &self.get_head_path()) {
+    pub fn write_head(&self, goldfish_head: String) -> Option<String> {
+        match filesystem::write_file(goldfish_head.as_str(), &self.get_head_path()) {
             Ok(_v) => return None,
             Err(_e) => return Some(String::from("Fail to save HEAD")),
         }
@@ -146,7 +146,7 @@ impl Repository {
         }
     }
 
-    pub fn trackFile(&self, abs_file_path: &str) -> Option<String> {
+    pub fn track_file(&self, abs_file_path: &str) -> Option<String> {
         // parse tracked files
         let mut tracked_file;
         match self.get_staging_tracked_files() {
@@ -156,13 +156,13 @@ impl Repository {
         // track files
         let file_content = filesystem::read_file(abs_file_path).unwrap();
         let file_content_hash = utilities::hash(file_content.as_str());
-        let rel_file_path_to_wd = filesystem::get_relative_path_to_wd(self.get_working_path(), abs_file_path);
+        let rel_file_path_to_wd = filesystem::get_relative_path_from_base(self.get_working_path(), abs_file_path);
         tracked_file.insert(rel_file_path_to_wd, file_content_hash);
         // write back state
         self.save_staging_tracked_files(tracked_file)
     }
 
-    pub fn untrackFile(&self, abs_file_path: &str) -> Option<String> {
+    pub fn untrack_file(&self, abs_file_path: &str) -> Option<String> {
         // parse tracked files
         let mut tracked_file;
         match self.get_staging_tracked_files() {
@@ -170,7 +170,7 @@ impl Repository {
             Err(e) => return Some(e),
         }
         // untrack files
-        let rel_file_path_to_wd = filesystem::get_relative_path_to_wd(self.get_working_path(), abs_file_path);
+        let rel_file_path_to_wd = filesystem::get_relative_path_from_base(self.get_working_path(), abs_file_path);
         tracked_file.remove(rel_file_path_to_wd.as_str());
         // write back state
         self.save_staging_tracked_files(tracked_file)
@@ -219,7 +219,7 @@ impl Commit {
         filesystem::write_file(content.as_str(), commit_path.as_str())?;
 
         // update HEAD file
-        repo.write_HEAD(String::from(&commit_id));
+        repo.write_head(String::from(&commit_id));
 
         Ok(Commit {
             id: commit_id,

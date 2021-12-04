@@ -15,6 +15,16 @@ pub fn print_output_string(message: String) {
 }
 
 /*
+    Print output message (vector of String struct) to terminal
+    @param message: output message sent to user
+*/
+pub fn print_output_vec_string(messages: Vec<String>) {
+    for message in messages {
+        println!("{}", message);
+    }
+}
+
+/*
     Print error message (string literal) to terminal
     @param message: error message sent to user
 */
@@ -49,7 +59,7 @@ pub fn print_welcome() {
 pub fn print_help() {
     println!("Here's the list of our supported commands:");
     println!("1. init: create an empty repository");
-    println!("2. clone [url]: copy an exisiting repository from an url");
+    println!("2. clone [url]: copy an existing repository from an url");
     println!("3. add [file]: add a specified file that you want to track");
     println!("4. remove [file]: remove a specified file from tracking list");
     println!("5. status: check the current status of current repository");
