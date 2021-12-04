@@ -1,6 +1,6 @@
 use crate::filesystem;
 use crate::utilities;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io;
 
 // root
@@ -189,14 +189,14 @@ impl Repository {
  * ```
  */
 #[derive(Debug)]
-pub struct Commit {
+pub struct Commit<'a> {
     id: String,
     direct_parent_id: String,
     secondary_parent_ids: Vec<String>,
-    path: String,
+    repo: &'a Repository,
 }
 
-impl Commit {
+impl<'a> Commit<'a> {
     pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, tracked_files: HashMap<String, String>) -> io::Result<Commit> {
         // TODO: assert non-empty file_list; a commit cannot have no files
 
@@ -225,12 +225,12 @@ impl Commit {
             id: commit_id,
             direct_parent_id: direct_parent_id,
             secondary_parent_ids: secondary_parent_ids,
-            path: commit_path
+            repo: repo
         })
     }
 
-    pub fn get(repo: &Repository, id: &str) -> Option<Commit> {
-        //! Find the commit file at the given path
+    pub fn get(repo: &'a Repository, id: &str) -> Option<Commit<'a>> {
+        //! Find the commit file with the given commit id
         //! and return the Commit object loaded from that commit file
         let full_path = filesystem::join_path(vec![repo.get_commits_path().as_str(), id]);
         let content = filesystem::read_file(full_path.as_str()).ok()?;
@@ -252,12 +252,13 @@ impl Commit {
                 break
             }
         }
-        Some(Commit { id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, path: full_path })
+        Some(Commit { id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, repo: repo })
     }
 
     pub fn load_tracked_files(&self) -> Option<HashMap<String, String>> {
         let mut result = HashMap::new();
-        let content = filesystem::read_file(self.path.as_str()).ok()?;
+        let commit_file_path = filesystem::join_path(vec![self.get_repo().get_commits_path().as_str(), self.get_id()]);
+        let content = filesystem::read_file(commit_file_path.as_str()).ok()?;
         let lines = content.split('\n');
         for line in lines {
             if line.starts_with("tracked_file") {
@@ -279,8 +280,8 @@ impl Commit {
         format!("Commit: {}", &self.id)
     }
 
-    pub fn get_path(&self) -> &str {
-        &self.path
+    pub fn get_repo(&self) -> &Repository {
+        &self.repo
     }
 
     pub fn get_id(&self) -> &str {
