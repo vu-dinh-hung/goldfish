@@ -6,6 +6,7 @@ use crate::model::{Blob, Commit, Repository};
 use crate::utilities;
 use std::collections::HashMap;
 use std::path::Path;
+use std::process::Command;
 
 pub fn init() {
     //! Create a new .dvcs folder inside the current directory (if it doesn't already exist)
@@ -51,8 +52,19 @@ pub fn init() {
 pub fn clone(url: &str) {
     //! Create a folder with the repo name, download the .dvcs folder from the specified url,
     //! and load the full directory into the folder
-    todo!()
+    //! Example url: username@host:path/to/.goldfish
+
+    // Create folder with repo name:
+    let mut chunks: Vec<&str> = url.split(&['@','/',':'][..]).collect();
+    let repo_name: &str = chunks.pop().unwrap();
+    create_dir(repo_name);
+
+    
+
+
 }
+
+
 
 pub fn commit() {
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
@@ -524,6 +536,15 @@ mod tests {
     fn test_1_init() {
         //! Check and make sure the correct initial files and folders are created
         todo!();
+    }
+
+    #[test]
+    fn test_2_parse_url_clone() {
+        //! Check and make sure the repository from the url is correctly copied over
+        let url: &str = "username@host:path/to/.goldfish";
+        let mut chunks: Vec<&str> = url.split(&['@','/',':'][..]).collect();
+        let repo_name: &str = chunks.pop().unwrap();
+        assert_eq!(repo_name, ".goldfish");
     }
 
     #[test]
