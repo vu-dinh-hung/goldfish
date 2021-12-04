@@ -257,7 +257,7 @@ impl<'a> Commit<'a> {
 
     pub fn load_tracked_files(&self) -> Option<HashMap<String, String>> {
         let mut result = HashMap::new();
-        let commit_file_path = filesystem::join_path(vec![self.get_repo().get_commits_path().as_str(), self.get_id()]);
+        let commit_file_path = filesystem::join_path(vec![self.get_repo().get_commits_path().as_str(), self.get_id().as_str()]);
         let content = filesystem::read_file(commit_file_path.as_str()).ok()?;
         let lines = content.split('\n');
         for line in lines {
@@ -276,6 +276,55 @@ impl<'a> Commit<'a> {
         Some(result)
     }
 
+    pub fn get_lowest_common_parent_with<'b>(&'b self, other: &'b Commit) -> Option<Commit<'b>> {
+        let mut self_ancestors = HashSet::new();
+        self_ancestors.insert(self.get_id());
+
+        // populate the parents set with all the ancestors of the self Commit
+        fn populate_ancestors(ancestors: &mut HashSet<String>, commit: &Commit) {
+            let parent_results = commit.get_parents();
+            for parent_result in parent_results {
+                match parent_result {
+                    Some(parent) => {
+                        ancestors.insert(parent.get_id());
+                        populate_ancestors(ancestors, &parent);
+                    }
+                    None => {}
+                }
+            }
+        }
+        populate_ancestors(&mut self_ancestors, self);
+
+        if self_ancestors.contains(&other.get_id()) {
+            return Commit::get(other.get_repo(), other.get_id().as_str())
+        }
+
+        // walk up the ancestor tree of the other Commit,
+        // returning when an ancestor that exists in self's ancestor set is found
+
+        fn find_match(ancestors: &mut HashSet<String>, commit: &Commit) -> Option<String> {
+            let parent_results = commit.get_parents();
+            for parent_result in parent_results {
+                match parent_result {
+                    Some(parent) => {
+                        if ancestors.contains(&parent.get_id()) {
+                            return Some(parent.get_id())
+                        } else {
+                            match find_match(ancestors, &parent) {
+                                Some(id) => return Some(id),
+                                None => {}
+                            }
+                        }
+                    }
+                    None => {}
+                }
+            }
+            None
+        }
+
+        Commit::get(self.repo, find_match(&mut self_ancestors, &other)?.as_str())
+    }
+
     pub fn pretty_print(&self) -> String {
         format!("Commit: {}", &self.id)
     }
@@ -284,8 +333,8 @@ impl<'a> Commit<'a> {
         &self.repo
     }
 
-    pub fn get_id(&self) -> &str {
-        &self.id
+    pub fn get_id(&self) -> String {
+        (&self).id.to_owned()
     }
 
     pub fn get_direct_parent_id(&self) -> &str {
@@ -294,6 +343,24 @@ impl<'a> Commit<'a> {
 
     pub fn get_secondary_parent_ids(&self) -> &Vec<String> {
         &self.secondary_parent_ids
+    }
+
+    pub fn get_direct_parent(&self) -> Option<Commit> {
+        Commit::get(&self.repo, &self.direct_parent_id)
+    }
+
+    pub fn get_secondary_parents(&self) -> Vec<Option<Commit>> {
+        let mut result = vec![];
+        for parent_id in &self.secondary_parent_ids {
+            result.push(Commit::get(&self.repo, parent_id))
+        }
+        result
+    }
+
+    pub fn get_parents(&self) -> Vec<Option<Commit>> {
+        let mut parents = self.get_secondary_parents();
+        parents.insert(0, self.get_direct_parent());
+        parents
     }
 }
 
