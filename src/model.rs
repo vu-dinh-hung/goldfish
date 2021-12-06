@@ -196,6 +196,9 @@ pub struct Commit<'a> {
     repo: &'a Repository,
 }
 
+
+
+
 impl<'a> Commit<'a> {
     pub fn create(repo: &Repository, direct_parent_id: String, secondary_parent_ids: Vec<String>, tracked_files: HashMap<String, String>) -> io::Result<Commit> {
         // TODO: assert non-empty file_list; a commit cannot have no files
@@ -325,6 +328,10 @@ impl<'a> Commit<'a> {
         Commit::get(self.repo, find_match(&mut self_ancestors, &other)?.as_str())
     }
 
+    
+
+
+
     pub fn pretty_print(&self) -> String {
         format!("Commit: {}", &self.id)
     }
@@ -362,6 +369,22 @@ impl<'a> Commit<'a> {
         parents.insert(0, self.get_direct_parent());
         parents
     }
+}
+
+#[derive(Debug)]
+pub struct Change_bin {
+    tag: String,
+    line_list: Vec<(String,String)>,
+}
+
+impl Change_bin {
+    pub fn create(T: String, L: Vec<(String,String)>) ->Change_bin {
+        Change_bin{
+            tag: T,
+            line_list: L,
+        }
+    }
+    
 }
 
 /**
