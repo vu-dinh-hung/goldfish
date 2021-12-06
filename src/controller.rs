@@ -50,10 +50,13 @@ pub fn clone(url: &str) {
     //! and load the full directory into the folder
     //! Example url: username@host:path/to/.goldfish
 
-    // Create folder with repo name:
-    let mut chunks: Vec<&str> = url.split(&['@','/',':'][..]).collect();
-    let repo_name: &str = chunks.pop().unwrap();
-    create_dir(repo_name);
+    Command::new("rsync")
+            .arg("-avz")
+            .arg(url)
+            .arg("./")
+            .output()
+            .expect("Failed to clone.");
+
 }
 
 
