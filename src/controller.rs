@@ -414,10 +414,11 @@ pub fn cat(commit_id: &str, file: &str) {
 
 pub fn log() {
     //! Print the ancestors of the current commit
-    fn print_ancestor(repo: &Repository, commit_id: &str) {
+    fn print_ancestor(repo: &Repository, commit_id: &str) -> bool {
         //! Print the current commit, then recursively print the ancestor of this commit
+        //! result
         if commit_id == "" {
-            return;
+            return false;
         }
 
         match Commit::get(repo, commit_id) {
@@ -425,15 +426,20 @@ pub fn log() {
                 print_output(format!("---\n{}", commit.pretty_print()).as_str());
                 print_ancestor(repo, commit.get_direct_parent_id());
             }
-            None => return print_error(format!("Invalid commit id: {}", commit_id).as_str()),
+            None => {
+                print_error(format!("Invalid commit id: {}", commit_id).as_str());
+            },
         }
+        true
     }
 
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => match repo.get_current_commit_id() {
             Ok(head_commit_id) => {
                 print_output("History:");
-                print_ancestor(&repo, head_commit_id.as_str());
+                if !print_ancestor(&repo, head_commit_id.as_str()) {
+                    print_output("Empty, no commit found")
+                };
             }
             Err(err) => return print_error(
                 format!(
