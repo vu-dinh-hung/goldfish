@@ -45,15 +45,24 @@ pub fn init() {
     }
 }
 
-pub fn clone(url: &str) {
+pub fn clone(url: &str, folder_name: &str) {
     //! Create a folder with the repo name, download the .dvcs folder from the specified url,
     //! and load the full directory into the folder
     //! Example url: username@host:path/to/.goldfish
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
-        Some(repo) => {
-            let download_succeeded = networking::rsync(url, repo.get_working_path());
+        Some(repo) => return print_error("Already a repository"),
+        None => {
+            let working_path = join_path(vec![".", folder_name]);
+            create_dir(working_path.as_str());
+            let download_succeeded = networking::rsync(url, working_path.as_str());
+            if download_succeeded {
+                print_output("--> Finished downloading repository data; now populating working tree");
+
+            } else {
+                remove(working_path.as_str());
+                return print_error(format!("Cannot fetch repository data from the given url: {}", url).as_str());
+            }
         }
-        None => return print_error("Not a Goldfish folder"),
     }
 }
 
@@ -459,58 +468,26 @@ pub fn checkout(commit_id: &str) {
     // TODO: catch all errors
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
+            let mut id = commit_id.to_owned();
+            if commit_id == "HEAD" {
+                match repo.read_head() {
+                    Ok(head_commit_id) => {
+                        id = head_commit_id;
+                    }
+                    Err(_) => return print_error("Could not find the HEAD commit")
+                }
+            }
             // get the Commit associated with the given commit_id
-            match Commit::get(&repo, commit_id) {
+            match Commit::get(&repo, id.as_str()) {
                 Some(commit) => {
-                    // load all the files of that commit
-                    match commit.load_tracked_files() {
-                        Some(tracked_file_list) => {
-                            // populate the staging area with the files of the commit
-                            for (file_path, blob_id) in &tracked_file_list {
-                                match Blob::get(&repo, blob_id.as_str()) {
-                                    Some(blob) => {
-                                        write_file(
-                                            blob.get_blob_content().unwrap().as_str(),
-                                            join_path(vec![
-                                                repo.get_staging_path().as_str(),
-                                                file_path.as_str(),
-                                            ])
-                                            .as_str(),
-                                        );
-                                    }
-                                    None => return print_error(
-                                        "Something went wrong creating the committed files",
-                                    ),
-                                }
-                            }
-                            // populate staging tracked files
-                            repo.save_staging_tracked_files(tracked_file_list);
-                            // copy the staging area to the working path
-                            for file_path in
-                                list_files(repo.get_staging_path().as_str(), true, &vec![]).unwrap()
-                            {
-                                let dest = join_path(vec![
-                                    repo.get_working_path(),
-                                    diff_path(repo.get_staging_path().as_str(), file_path.as_str())
-                                        .unwrap()
-                                        .as_str(),
-                                ]);
-                                match write_file(
-                                    read_file(file_path.as_str()).unwrap().as_str(),
-                                    dest.as_str(),
-                                ) {
-                                    Ok(_) => {}
-                                    Err(_) => return print_error("Something failed while writing to working area")
-                                }
-                            }
-                            // clean staging
-                            remove(repo.get_staging_path().as_str()).unwrap();
-                        }
-                        None => return print_error("Corrupt commit file"),
+                    match commit.checkout() {
+                        Ok(_) => {}
+                        Err(err) => return print_error(err.as_str())
                     }
                 }
                 None => return print_error("Invalid commit_id"),
             }
+            print_output_string(format!("Checked out commit {}", id))
         }
         None => return print_error("Not a Goldfish folder"),
     }
