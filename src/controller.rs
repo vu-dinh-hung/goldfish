@@ -630,8 +630,7 @@ pub fn merge(commit: &str) {
                 Some(current) => {
                     match Commit::get(&repo, commit){
                         Some(update) => {
-                            let 
-                        }
+                                                    }
                         None => {}
                     }
                 }
