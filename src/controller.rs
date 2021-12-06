@@ -179,7 +179,7 @@ pub fn status() {
                                 Some(files) => head_tracked_files = files,
                                 None => return print_error("Fail to load current commit"),
                             },
-                            None => return print_error("Fail to load current commity"),
+                            None => return print_error("Fail to load current commit"),
                         }
                     }
                 }
@@ -247,6 +247,67 @@ pub fn status() {
             }
         }
         None => return print_error("Not a Goldfish folder"),
+    }
+}
+
+fn check_status() -> Option<bool> {
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            let mut change = false;
+            // Comparing staging with HEAD
+            let staging_tracked_files;
+            match repo.get_staging_tracked_files() {
+                Ok(files) => staging_tracked_files = files,
+                Err(e) => {
+                    print_error(e.as_str());
+                    return None;
+                }
+            }
+            let head_tracked_files;
+            match repo.get_current_commit_id() {
+                Ok(commit_id) => {
+                    if commit_id.is_empty() {
+                        head_tracked_files = HashMap::new();
+                    } else {
+                        match Commit::get(&repo, commit_id.as_str()) {
+                            Some(commit) => match commit.load_tracked_files() {
+                                Some(files) => head_tracked_files = files,
+                                None => {
+                                    print_error("Fail to load current commit");
+                                    return None;
+                                }
+                            },
+                            None => {
+                                print_error("Fail to load current commit");
+                                return None;
+                            }
+                        }
+                    }
+                }
+                Err(e) => head_tracked_files = HashMap::new(),
+            }
+            // Comparing current WD with staging
+            let mut wd_files = HashMap::new();
+            for file_path in
+                list_files(repo.get_working_path(), true, &vec![repo.get_repo_path()]).unwrap()
+            {
+                let hash;
+                match read_file(&file_path) {
+                    Ok(content) => hash = utilities::hash(content.as_str()),
+                    Err(_e) => hash = "".to_string(),
+                }
+                wd_files.insert(
+                    get_relative_path_from_base(repo.get_working_path(), file_path.as_str()),
+                    hash,
+                );
+            }
+            return Some(!utilities::compare_map(&staging_tracked_files, &head_tracked_files)
+                    || !utilities::compare_map(&wd_files, &staging_tracked_files));
+        }
+        None => {
+            print_error("Not a Goldfish folder");
+            return None;
+        }
     }
 }
 
