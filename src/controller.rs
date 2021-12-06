@@ -54,10 +54,6 @@ pub fn clone(url: &str) {
     let mut chunks: Vec<&str> = url.split(&['@','/',':'][..]).collect();
     let repo_name: &str = chunks.pop().unwrap();
     create_dir(repo_name);
-
-    
-
-
 }
 
 
@@ -110,7 +106,6 @@ pub fn commit() {
                             }
                             Err(_) => return print_error("This file path should be valid"),
                         }
-                        
                     }
                     // clean staging
                     remove(repo.get_staging_path().as_str()).unwrap();
@@ -249,7 +244,13 @@ pub fn heads() {
     //! Print out the current HEAD and the branch name of that HEAD, taken from the .dvcs folder
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => match repo.read_head() {
-            Ok(head) => print_output(format!("At commit {}", head).as_str()),
+            Ok(head) => {
+                if head == "" {
+                    print_output("Empty repository")
+                } else {
+                    print_output(format!("At commit {}", head).as_str())
+                }
+            }
             Err(e) => return print_error(e.as_str()),
         },
         None => return print_error("Not a Goldfish folder"),
@@ -257,7 +258,7 @@ pub fn heads() {
 }
 
 pub fn diff(commit_id1: &str, commit_id2: &str) {
-    fn get_diff_files(tracked_file_list1: &HashMap<String, String>, 
+    fn get_diff_files(tracked_file_list1: &HashMap<String, String>,
                         tracked_file_list2: &HashMap<String, String>) -> Vec<String> {
         let mut result: Vec<String> = vec![];
         for (file_path1, _) in tracked_file_list1 {
@@ -332,7 +333,6 @@ pub fn diff(commit_id1: &str, commit_id2: &str) {
                                                                                         } else {
                                                                                             temp_result.push(format!("{}", content.1));
                                                                                         }
-                                                                                        
                                                                                     }
                                                                                     if has_diff {
                                                                                         result.push(format!("Differences in file {}:", file_path1));
@@ -349,7 +349,6 @@ pub fn diff(commit_id1: &str, commit_id2: &str) {
                                                                     "Something went wrong reading file",
                                                                 ),
                                                             }
-                                                            
                                                         }
                                                         None => return print_error(
                                                             "Something went wrong reading file",
