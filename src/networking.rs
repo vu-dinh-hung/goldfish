@@ -2,8 +2,18 @@ use ssh2::Session;
 use ssh2::Error;
 use std::io::prelude::*;
 use std::net::TcpStream;
-use toml::Value;
 use std::path::Path;
+use std::process::Command;
+
+
+pub fn rsync(source: &str, destination: &str) -> bool {
+    Command::new("rsync")
+    .arg("-avz")
+    .arg(source)
+    .arg(destination)
+    .output()
+    .is_ok()
+}
 
 // Returns SSH connection to ip_address on port 22 with specified credentials.
 fn connect_to_server(ip_address: &str, username: &str, password: &str) -> Option<Session> {
@@ -18,7 +28,7 @@ fn connect_to_server(ip_address: &str, username: &str, password: &str) -> Option
     } else {
         return None;
     }
-    
+
 }
 
 // Download file at filepath from given server session in to current directory
@@ -28,7 +38,7 @@ fn download_from_server(session: Session, filepath: &str) -> Result<&str, Error>
         Ok((mut remote_file, stat)) => {
             let mut contents = Vec::new();
             remote_file.read_to_end(&mut contents).unwrap();
-        
+
             // Close the channel and wait for the whole content to be tranferred
             remote_file.send_eof().unwrap();
             remote_file.wait_eof().unwrap();
@@ -57,4 +67,3 @@ mod tests {
        assert!(session.authenticated());
     }
 }
-

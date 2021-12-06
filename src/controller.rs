@@ -2,11 +2,11 @@
 use crate::display::{print_error, print_output, print_output_string, print_output_vec_string, print_error_string};
 use crate::filesystem::*;
 use crate::model;
+use crate::networking;
 use crate::model::{Blob, Commit, Repository, Change_bin};
 use crate::utilities;
 use std::collections::HashMap;
 use std::path::Path;
-use std::process::Command;
 
 pub fn init() {
     // Create a new .dvcs folder inside the current directory (if it doesn't already exist)
@@ -49,14 +49,12 @@ pub fn clone(url: &str) {
     //! Create a folder with the repo name, download the .dvcs folder from the specified url,
     //! and load the full directory into the folder
     //! Example url: username@host:path/to/.goldfish
-
-    Command::new("rsync")
-            .arg("-avz")
-            .arg(url)
-            .arg("./")
-            .output()
-            .expect("Failed to clone.");
-
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            let download_succeeded = networking::rsync(url, repo.get_working_path());
+        }
+        None => return print_error("Not a Goldfish folder"),
+    }
 }
 
 
@@ -523,7 +521,7 @@ pub fn checkout(commit_id: &str) {
 
 //returns a Hashmap mapping filename to Change_bin
 pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Option<HashMap<String, Change_bin>> {
-    fn get_diff_files(tracked_file_list1: &HashMap<String, String>, 
+    fn get_diff_files(tracked_file_list1: &HashMap<String, String>,
                         tracked_file_list2: &HashMap<String, String>) -> Vec<String> {
         let mut result: Vec<String> = vec![];
         for (file_path1, _) in tracked_file_list1 {
@@ -541,11 +539,11 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
         result
     }
 
-    
+
     let mut result : HashMap<String, Change_bin> = HashMap::new();
     // Takes in two commit hashes and use the `display` module to print out the changes
     // between the two files
-                   
+
     // load all the files of the commits
     match a.load_tracked_files() {
         Some(tracked_file_list1) => {
@@ -553,16 +551,16 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
                 Some(tracked_file_list2) => {
                     let added_files = get_diff_files(&tracked_file_list2, &tracked_file_list1);
                     let removed_files = get_diff_files(&tracked_file_list1, &tracked_file_list2);
-                    
-                    
+
+
                     for file in added_files {
                         result.insert(file, Change_bin::create(
                             String::from("+"),
                             vec![],
                         ));
                     }
-                
-                    
+
+
                     for file in removed_files{
                         result.insert(file, Change_bin::create(
                             String::from("-"),
@@ -570,8 +568,8 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
                         ));
                     }
 
-                    
-                    
+
+
                     for (file_path1, blob_id1) in &tracked_file_list1 {
                         let mut is_file_in: bool = false;
                         let mut blob_id2: String = "".to_string();
@@ -599,7 +597,7 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
                                                             result.insert(file_path1.to_string(), Change_bin::create(
                                                                 String::from("="),
                                                                 diff_content,
-                                                            )); 
+                                                            ));
                                                         }
                                                         Err(_) => (),
                                                     }
@@ -609,7 +607,7 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
                                         }
                                         None => (),
                                     }
-                                    
+
                                 }
                                 None => (),
                             }
@@ -621,14 +619,14 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
         }
         None => (),
     }
-                        
-                    
-                
-                
-            
-            
-        
-    
+
+
+
+
+
+
+
+
     Some(result)
 }
 
@@ -648,7 +646,7 @@ pub fn merge(commit: &str) {
         }
         None => {}
     }
-    
+
 }
 
 
