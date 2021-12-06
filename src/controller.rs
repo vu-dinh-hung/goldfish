@@ -2,7 +2,7 @@
 use crate::display::{print_error, print_output, print_output_string, print_output_vec_string, print_error_string};
 use crate::filesystem::*;
 use crate::model;
-use crate::model::{Blob, Commit, Repository};
+use crate::model::{Blob, Commit, Repository, Change_bin};
 use crate::utilities;
 use std::collections::HashMap;
 use std::path::Path;
@@ -417,10 +417,11 @@ pub fn cat(commit_id: &str, file: &str) {
 
 pub fn log() {
     //! Print the ancestors of the current commit
-    fn print_ancestor(repo: &Repository, commit_id: &str) {
+    fn print_ancestor(repo: &Repository, commit_id: &str) -> bool {
         //! Print the current commit, then recursively print the ancestor of this commit
+        //! result
         if commit_id == "" {
-            return;
+            return false;
         }
 
         match Commit::get(repo, commit_id) {
@@ -428,15 +429,20 @@ pub fn log() {
                 print_output(format!("---\n{}", commit.pretty_print()).as_str());
                 print_ancestor(repo, commit.get_direct_parent_id());
             }
-            None => return print_error(format!("Invalid commit id: {}", commit_id).as_str()),
+            None => {
+                print_error(format!("Invalid commit id: {}", commit_id).as_str());
+            },
         }
+        true
     }
 
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => match repo.get_current_commit_id() {
             Ok(head_commit_id) => {
                 print_output("History:");
-                print_ancestor(&repo, head_commit_id.as_str());
+                if !print_ancestor(&repo, head_commit_id.as_str()) {
+                    print_output("Empty, no commit found")
+                };
             }
             Err(err) => return print_error(
                 format!(
@@ -512,11 +518,139 @@ pub fn checkout(commit_id: &str) {
     }
 }
 
-pub fn merge(commit: &str) {
-    //! Merge the given commit with the current commit. Only works if the current directory
-    //! does not have uncommited changes.
-    todo!()
+
+
+
+//returns a Hashmap mapping filename to Change_bin
+pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Option<HashMap<String, Change_bin>> {
+    fn get_diff_files(tracked_file_list1: &HashMap<String, String>, 
+                        tracked_file_list2: &HashMap<String, String>) -> Vec<String> {
+        let mut result: Vec<String> = vec![];
+        for (file_path1, _) in tracked_file_list1 {
+            let mut is_file_in: bool = false;
+            for (file_path2, _) in tracked_file_list2 {
+                if file_path1 == file_path2 {
+                    is_file_in = true;
+                    break;
+                }
+            }
+            if !is_file_in {
+                result.push(file_path1.to_string());
+            }
+        }
+        result
+    }
+
+    
+    let mut result : HashMap<String, Change_bin> = HashMap::new();
+    // Takes in two commit hashes and use the `display` module to print out the changes
+    // between the two files
+                   
+    // load all the files of the commits
+    match a.load_tracked_files() {
+        Some(tracked_file_list1) => {
+            match b.load_tracked_files() {
+                Some(tracked_file_list2) => {
+                    let added_files = get_diff_files(&tracked_file_list2, &tracked_file_list1);
+                    let removed_files = get_diff_files(&tracked_file_list1, &tracked_file_list2);
+                    
+                    
+                    for file in added_files {
+                        result.insert(file, Change_bin::create(
+                            String::from("+"),
+                            vec![],
+                        ));
+                    }
+                
+                    
+                    for file in removed_files{
+                        result.insert(file, Change_bin::create(
+                            String::from("-"),
+                            vec![],
+                        ));
+                    }
+
+                    
+                    
+                    for (file_path1, blob_id1) in &tracked_file_list1 {
+                        let mut is_file_in: bool = false;
+                        let mut blob_id2: String = "".to_string();
+                        for (file_path2, temp_blob_id) in &tracked_file_list2 {
+                            if file_path1 == file_path2 {
+                                is_file_in = true;
+                                blob_id2 = temp_blob_id.to_string();
+                                break;
+                            }
+                        }
+                        if is_file_in {
+                            match Blob::get(&repo, blob_id1.as_str()) {
+                                Some(blob1) => {
+                                    match Blob::get(&repo, blob_id2.as_str()) {
+                                        Some(blob2) => {
+                                            match blob1.get_blob_content() {
+                                                Ok(content1) => {
+                                                    match blob2.get_blob_content() {
+                                                        Ok(content2) => {
+                                                            let file_vec1: Vec<String> = content1.lines().collect::<Vec<&str>>()
+                                                                                            .iter().map(|s| s.to_string()).collect();
+                                                            let file_vec2: Vec<String> = content2.lines().collect::<Vec<&str>>()
+                                                                                            .iter().map(|s| s.to_string()).collect();
+                                                            let diff_content = utilities::diff(file_vec1, file_vec2);
+                                                            result.insert(file_path1.to_string(), Change_bin::create(
+                                                                String::from("="),
+                                                                diff_content,
+                                                            )); 
+                                                        }
+                                                        Err(_) => (),
+                                                    }
+                                                }
+                                                Err(_) => (),
+                                            }
+                                        }
+                                        None => (),
+                                    }
+                                    
+                                }
+                                None => (),
+                            }
+                        }
+                    }
+                }
+                None => (),
+            }
+        }
+        None => (),
+    }
+                        
+                    
+                
+                
+            
+            
+        
+    
+    Some(result)
 }
+
+pub fn merge(commit: &str) {
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            match Commit::get(&repo, repo.get_current_commit_id().unwrap().as_str()){
+                Some(current) => {
+                    match Commit::get(&repo, commit){
+                        Some(update) => {
+                                                    }
+                        None => {}
+                    }
+                }
+                None => {}
+            }
+        }
+        None => {}
+    }
+    
+}
+
 
 pub fn push() {
     //! Use the ServerContent interface in `networking` to make a push request to a different
