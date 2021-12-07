@@ -258,6 +258,57 @@ impl<'a> Commit<'a> {
         Some(Commit { id: id.to_string(), direct_parent_id: parent, secondary_parent_ids: secondary_parents, repo: repo })
     }
 
+    pub fn checkout(&self) -> Result<String, String> {
+        let repo = self.get_repo();
+        // load all the files of that commit
+        match self.load_tracked_files() {
+            Some(tracked_file_list) => {
+                // populate the staging area with the files of the commit
+                for (file_path, blob_id) in &tracked_file_list {
+                    match Blob::get(&repo, blob_id.as_str()) {
+                        Some(blob) => {
+                            filesystem::write_file(
+                                blob.get_blob_content().unwrap().as_str(),
+                                filesystem::join_path(vec![
+                                    repo.get_staging_path().as_str(),
+                                    file_path.as_str(),
+                                ])
+                                .as_str(),
+                            );
+                        }
+                        None => return Err(
+                            String::from("Something went wrong creating the committed files"),
+                        ),
+                    }
+                }
+                // populate staging tracked files
+                repo.save_staging_tracked_files(tracked_file_list);
+                // copy the staging area to the working path
+                for file_path in
+                    filesystem::list_files(repo.get_staging_path().as_str(), true, &vec![]).unwrap()
+                {
+                    let dest = filesystem::join_path(vec![
+                        repo.get_working_path(),
+                        filesystem::diff_path(repo.get_staging_path().as_str(), file_path.as_str())
+                            .unwrap()
+                            .as_str(),
+                    ]);
+                    match filesystem::write_file(
+                        filesystem::read_file(file_path.as_str()).unwrap().as_str(),
+                        dest.as_str(),
+                    ) {
+                        Ok(_) => {}
+                        Err(_) => return Err(String::from("Something failed while writing to working area"))
+                    }
+                }
+                // clean staging
+                filesystem::remove(repo.get_staging_path().as_str()).unwrap();
+            }
+            None => return Err(String::from("Corrupt commit file")),
+        }
+        Ok(String::from(""))
+    }
+
     pub fn load_tracked_files(&self) -> Option<HashMap<String, String>> {
         let mut result = HashMap::new();
         let commit_file_path = filesystem::join_path(vec![self.get_repo().get_commits_path().as_str(), self.get_id().as_str()]);
@@ -328,7 +379,7 @@ impl<'a> Commit<'a> {
         Commit::get(self.repo, find_match(&mut self_ancestors, &other)?.as_str())
     }
 
-    
+
 
 
 
@@ -384,7 +435,7 @@ impl Change_bin {
             line_list: L,
         }
     }
-    
+
 }
 
 /**
