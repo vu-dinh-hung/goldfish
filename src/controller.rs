@@ -718,14 +718,14 @@ pub fn merge(commit: &str) {
 }
 
 
-pub fn push() {
-    //! Use the ServerContent interface in `networking` to make a push request to a different
+pub fn push(url: &str) {
+    //! Use `networking` to make a push request to a different
     //! dvcs server
-    todo!()
+
 }
 
-pub fn pull() {
-    //! Use the ServerContent interface in `networking` to make a pull request to a different
+pub fn pull(url: &str) {
+    //! Use `networking` to make a pull request to a different
     //! dvcs server
     todo!()
 }

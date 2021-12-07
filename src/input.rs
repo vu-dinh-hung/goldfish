@@ -291,10 +291,10 @@ fn process_merge(args: Vec<&str>) {
     @param args: list of arguments from user input
 */
 fn process_pull(args: Vec<&str>) {
-    if args.len() == 1 {
-        controller::pull();
+    if args.len() == 2 {
+        controller::pull(args[1]);
     } else {
-        display::print_error_string(format!("Invalid number of arguments for pull. Expect 0 but got {}", args.len() - 1));
+        display::print_error_string(format!("Invalid number of arguments for pull. Expect 1 but got {}", args.len() - 1));
     }
 }
 
@@ -306,10 +306,10 @@ fn process_pull(args: Vec<&str>) {
     @param args: list of arguments from user input
 */
 fn process_push(args: Vec<&str>) {
-    if args.len() == 1 {
-        controller::push();
+    if args.len() == 2 {
+        controller::push(args[1]);
     } else {
-        display::print_error_string(format!("Invalid number of arguments for push. Expect 0 but got {}", args.len() - 1));
+        display::print_error_string(format!("Invalid number of arguments for push. Expect 1 but got {}", args.len() - 1));
     }
 }
 
