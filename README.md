@@ -21,11 +21,13 @@ CSC 253 DVCS implementation
 - 
 **staging folder:** staging area (it will only store files different from the last commit)
 
+**branches folder:** for branching (but didn't have enough time to implement)
+
 **HEAD file**: current commit id
 
 **tracked_files file**: list of files and their blob ids for staging
 
-## How things work
+## How things work (Core commands)
 ### 1. Init
 - Check if the current folder is already goldfish project or not (by checking itself and its parent containing .goldfish folder or not)
 - If already goldfish folder, error
@@ -70,3 +72,38 @@ Comparing current WD with staging
 - Replace staging tracked file list with the commit's tracked file list
 - Copy the staging area to the working path
 - Clean staging
+
+### 7. Clone <url>
+- Check if there's any repository exists
+- If not, download the content from specified URL using rsync
+- Extract content from .goldfish folder
+
+### 8. Heads
+- Check if heads exists in the repository
+- Print out the heads
+
+### 9. Diff <commit> <commit>
+- Check the difference between two files using longest common subsequence algorithm
+- Iterate through each file in each revision and print out the diferrences
+
+### 10. Cat <commit_id> <path>
+- Find the revision based on revision id
+- Find the file in the revision based on the file name
+- Print out the content of the file
+
+### 11. Log
+- Check the history by going up in the commit tree
+- Print out the history as we go up
+
+### 12. Merge <commit_id>
+- Compare the file difference between two commits
+- For files that two commits have in common, generate the merged version for each file (by using diff algorithm)
+
+### 13. Pull <url>
+- Check if the URL contains a valid repository
+- Fetch the content in the specified URL
+- Merge with the current repository
+
+### 14. Push <url>
+- Check if the current directory is a valid repository
+- Push to specified URL by using rsync
