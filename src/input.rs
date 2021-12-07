@@ -62,7 +62,7 @@ fn process_command(args: Vec<&str>) {
             "log" => process_log(args),
             "merge" => process_merge(args),
             "pull" => process_pull(args),
-            "push" => process_push(args),
+            // "push" => process_push(args),
             _ => display::print_error("Invalid command. Please type help to see our supported commands")
         }
     }
@@ -305,13 +305,13 @@ fn process_pull(args: Vec<&str>) {
 
     @param args: list of arguments from user input
 */
-fn process_push(args: Vec<&str>) {
-    if args.len() == 2 {
-        controller::push(args[1]);
-    } else {
-        display::print_error_string(format!("Invalid number of arguments for push. Expect 1 but got {}", args.len() - 1));
-    }
-}
+// fn process_push(args: Vec<&str>) {
+//     if args.len() == 2 {
+//         controller::push(args[1]);
+//     } else {
+//         display::print_error_string(format!("Invalid number of arguments for push. Expect 1 but got {}", args.len() - 1));
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

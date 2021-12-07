@@ -1,6 +1,7 @@
 //! # Controller
 use crate::display::{print_error, print_output, print_output_string, print_output_vec_string, print_error_string};
 use crate::filesystem::*;
+use crate::filesystem;
 use crate::model;
 use crate::networking;
 use crate::model::{Blob, Commit, Repository, Change_bin};
@@ -805,35 +806,37 @@ pub fn merge(commit: &str) {
 
 
                                                                 
+                                                                
+                                                                for(file_path2, blob_id2) in &tracked_file_list2{
+                                                                    if file == file_path2{
+                                                                        let content = Blob::get(&repo, blob_id2).unwrap().get_blob_content().unwrap();
+                                                                        filesystem::write_file(
+                                                                        content.as_str(),
+                                                                        filesystem::join_path(
+                                                                            vec![repo.get_working_path(), file.as_str()]
+                                                                            ).as_str()
 
-
-
-                                                                for (file_path, blob_id) in &tracked_file_list2 {
-                                                                    if file == file_path{
-                                                                        match Blob::get(&repo, blob_id.as_str()) {
-                                                                        Some(blob) => {
-                                                                            write_file(
-                                                                                blob.get_blob_content().unwrap().as_str(),
-                                                                                join_path(vec![
-                                                                                    repo.get_working_path(),
-                                                                                    file_path.as_str(),
-                                                                                ])
-                                                                                .as_str(),
-                                                                            );
-                                                                        }
-                                                                        None => return print_error(
-                                                                            "Something went wrong creating the committed files",
-                                                                        ),
+                                                                    );
+                                                                        return ()
                                                                     }
-                                                                    }
-                                                                    
                                                                 }
+                                                                
+
+
+                                                                
                                                             }
                                                             "=" => {
                                                                 for(file_path1, blob_id1) in &tracked_file_list1{
                                                                     for(file_path2, blob_id2) in &tracked_file_list2{
                                                                         if file == file_path1 && file == file_path2{
-                                                                            merge_files(&repo, blob_id1.as_str(), blob_id2.as_str(), current.get_id().as_str(), update.get_id().as_str());
+                                                                            filesystem::write_file(
+                                                                                    merge_files(&repo, blob_id1.as_str(), blob_id2.as_str(), current.get_id().as_str(), update.get_id().as_str()).as_str(),
+                                                                                    filesystem::join_path(
+                                                                                        vec![repo.get_working_path(), file]
+                                                                                        ).as_str()
+                                                                                );
+                                                                            return ()
+                                                                            
                                                                         }
                                                                     }
                                                                 }
