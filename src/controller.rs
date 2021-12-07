@@ -875,10 +875,8 @@ pub fn merge(commit: &str) {
 
 
 
-pub fn push(url: &str) {
-    //! Use `networking` to make a push request to a different
-
-    //! dvcs server
+pub fn push(url: &str, repo_name: &str) {
+    networking::rsync(repo_name, url); 
 
 }
 
