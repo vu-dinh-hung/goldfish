@@ -886,8 +886,13 @@ pub fn merge(commit: &str) {
 
 
 
-pub fn push(url: &str, repo_name: &str) {
-    networking::rsync(repo_name, url);
+pub fn push(url: &str) {
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            networking::rsync(repo.get_working_path(), url);
+        }
+        None => print_error("Not a repository")
+    }
 
 }
 
