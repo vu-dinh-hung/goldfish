@@ -789,50 +789,63 @@ pub fn merge(commit: &str) {
                 Some(current) => {
                     match Commit::get(&repo, commit){
                         Some(update) => {
+
                             match update.load_tracked_files(){
                                 Some(tracked_file_list2) => {
-                                    match commit_diff(&current, &update, &repo){
-                                        Some(map) => {
-                                            for(file, diff_list) in map.iter(){
-                                                match diff_list.get_tag() {
-                                                    "-" => {
+                                    match current.load_tracked_files(){
+                                        Some(tracked_file_list1) => {
+                                            match commit_diff(&current, &update, &repo){
+                                                Some(map) => {
+                                                    for(file, diff_list) in map.iter(){
+                                                        match diff_list.get_tag() {
+                                                            "-" => {
 
-                                                    }
-                                                    "+" => {
-
-
-                                                        
-
+                                                            }
+                                                            "+" => {
 
 
-                                                        for (file_path, blob_id) in &tracked_file_list2 {
-                                                            if file == file_path{
-                                                                match Blob::get(&repo, blob_id.as_str()) {
-                                                                Some(blob) => {
-                                                                    write_file(
-                                                                        blob.get_blob_content().unwrap().as_str(),
-                                                                        join_path(vec![
-                                                                            repo.get_working_path(),
-                                                                            file_path.as_str(),
-                                                                        ])
-                                                                        .as_str(),
-                                                                    );
+                                                                
+
+
+
+                                                                for (file_path, blob_id) in &tracked_file_list2 {
+                                                                    if file == file_path{
+                                                                        match Blob::get(&repo, blob_id.as_str()) {
+                                                                        Some(blob) => {
+                                                                            write_file(
+                                                                                blob.get_blob_content().unwrap().as_str(),
+                                                                                join_path(vec![
+                                                                                    repo.get_working_path(),
+                                                                                    file_path.as_str(),
+                                                                                ])
+                                                                                .as_str(),
+                                                                            );
+                                                                        }
+                                                                        None => return print_error(
+                                                                            "Something went wrong creating the committed files",
+                                                                        ),
+                                                                    }
+                                                                    }
+                                                                    
                                                                 }
-                                                                None => return print_error(
-                                                                    "Something went wrong creating the committed files",
-                                                                ),
                                                             }
+                                                            "=" => {
+                                                                for(file_path1, blob_id1) in &tracked_file_list1{
+                                                                    for(file_path2, blob_id1){
+                                                                        if file == file_path1 && file == file_path2{
+                                                                            merge_files(repo, blob1_id, blob2_id);
+                                                                        }
+                                                                    }
+                                                                }
+                                                                
+                                                                
                                                             }
-                                                            
+                                                            _ => return print_error("Problem with file merge tag")
+
                                                         }
                                                     }
-                                                    "=" => {
-                                                        //merge_file(curr, update, file, diff_list.get_line_list());
-                                                        
-                                                    }
-                                                    _ => return print_error("Problem with file merge tag")
-
                                                 }
+                                                None => {}
                                             }
                                         }
                                         None => {}
@@ -860,8 +873,7 @@ pub fn merge(commit: &str) {
 
 
 
-pub fn push() {
-    //! Use the ServerContent interface in `networking` to make a push request to a different
+
 
 pub fn push(url: &str) {
     //! Use `networking` to make a push request to a different
