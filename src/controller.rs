@@ -691,6 +691,89 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
     Some(result)
 }
 
+// Helper functions for merge
+fn get_blob_content_as_vec(repo: &Repository, blob_id: &str) -> Vec<String> {
+    match Blob::get(&repo, blob_id) {
+        Some(blob) => {
+            match blob.get_blob_content() {
+                Ok(content) => {
+                    return content.lines()
+                                .collect::<Vec<&str>>()
+                                .iter()
+                                .map(|s| s.to_string())
+                                .collect();
+                },
+                Err(_) => ()
+            }
+        },
+        None => ()
+    }
+    return vec!();
+}
+
+fn add_line(result: &mut String, line: &String) {
+    if result.len() != 0 {
+        result.push_str("\n");
+    }
+    result.push_str(line.as_str());
+}
+
+fn create_conflict(
+    result: &mut String, 
+    blob1_content: &Vec<String>, 
+    blob2_content: &Vec<String>,
+    blob1_id: &str,
+    blob2_id: &str
+) {
+    if blob1_content.len() == 0 && blob2_content.len() == 0 {
+        return;
+    }
+    if blob1_content.len() == 0 {
+        for line in blob2_content {
+            add_line(result, line);
+        }
+    }
+    if blob2_content.len() == 0 {
+        for line in blob1_content {
+            add_line(result, line);
+        }
+    }
+    // conflict!
+    add_line(result, &format!("<<<<<<<<<< {}", blob1_id));
+    for line in blob1_content {
+        add_line(result, line);
+    }
+    add_line(result, &format!("===================="));
+    for line in blob2_content {
+        add_line(result, line);
+    }
+    add_line(result, &format!(">>>>>>>>>> {}", blob2_id));
+}
+
+fn merge_files(repo: &Repository, blob1_id: &str, blob2_id: &str) -> String {
+    let blob1 = get_blob_content_as_vec(repo, blob1_id);
+    let blob2 = get_blob_content_as_vec(repo, blob2_id);
+    let diff_content = utilities::diff(blob1, blob2);
+    let mut blob1_content: Vec<String> = vec!();
+    let mut blob2_content: Vec<String> = vec!();
+    let mut result: String = String::from("");
+    for (typ, content) in diff_content {
+        if typ == "-" {
+            blob1_content.push(content);
+        } else if typ == "+" {
+            blob2_content.push(content);
+        } else {
+            create_conflict(&mut result, &blob1_content, &blob2_content, blob1_id, blob2_id);
+            add_line(&mut result, &content);
+            blob1_content.clear();
+            blob2_content.clear();
+        }
+    }
+    create_conflict(&mut result, &blob1_content, &blob2_content, blob1_id, blob2_id);
+    return result;
+}
+// End of helper functions for merge
+
 pub fn merge(commit: &str) {
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
