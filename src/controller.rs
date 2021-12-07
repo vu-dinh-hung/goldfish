@@ -55,6 +55,9 @@ pub fn clone(url: &str, folder_name: &str) {
         None => {
             // create the base folder for the new local repository
             let working_path = join_path(vec![".", folder_name]);
+            if is_dir(working_path.as_str()) {
+                return print_output_string(format!("The directory {} already exists", working_path))
+            }
             if let Err(_) = create_dir(working_path.as_str()) {
                 print_output_string(format!("Something went wrong creating the {} folder for the repository", working_path));
             }
@@ -727,8 +730,8 @@ fn add_line(result: &mut String, line: &String) {
 }
 
 fn create_conflict(
-    result: &mut String, 
-    blob1_content: &Vec<String>, 
+    result: &mut String,
+    blob1_content: &Vec<String>,
     blob2_content: &Vec<String>,
     blob1_id: &str,
     blob2_id: &str
@@ -810,8 +813,8 @@ pub fn merge(commit: &str) {
                                                             "+" => {
 
 
-                                                                
-                                                                
+
+
                                                                 for(file_path2, blob_id2) in &tracked_file_list2{
                                                                     if file == file_path2{
                                                                         let content = Blob::get(&repo, blob_id2).unwrap().get_blob_content().unwrap();
@@ -825,10 +828,10 @@ pub fn merge(commit: &str) {
                                                                         return ()
                                                                     }
                                                                 }
-                                                                
 
 
-                                                                
+
+
                                                             }
                                                             "=" => {
                                                                 for(file_path1, blob_id1) in &tracked_file_list1{
@@ -841,12 +844,12 @@ pub fn merge(commit: &str) {
                                                                                         ).as_str()
                                                                                 );
                                                                             return ()
-                                                                            
+
                                                                         }
                                                                     }
                                                                 }
-                                                                
-                                                                
+
+
                                                             }
                                                             _ => return print_error("Problem with file merge tag")
 
@@ -883,8 +886,13 @@ pub fn merge(commit: &str) {
 
 
 
-pub fn push(url: &str, repo_name: &str) {
-    networking::rsync(repo_name, url); 
+pub fn push(url: &str) {
+    match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
+        Some(repo) => {
+            networking::rsync(repo.get_working_path(), url);
+        }
+        None => print_error("Not a repository")
+    }
 
 }
 
