@@ -892,10 +892,71 @@ pub fn push(url: &str, repo_name: &str) {
 }
 
 pub fn pull(url: &str) {
-    //! Use `networking` to make a pull request to a different
-    //! dvcs server
-    todo!()
+    // Use `networking` to make a pull request to a different
+    // dvcs server
+    if check_status().is_none() {
+        return print_error("Cannot pull. Working directory isn't clean or existed.");
+    }
+    let og_dir: String = std::env::current_dir().unwrap().to_str().unwrap().to_string();
+    if try_clone(url).is_some() {
+        std::env::set_current_dir(&og_dir);
+        remove(".goldfish_temp");
+        networking::rsync(url, ".goldfish");
+        match Repository::find(".goldfish") {
+            Some(repo) => {
+                match repo.read_head() {
+                    Ok(head_id) => {
+                        match Commit::get(&repo, head_id.as_str()) {
+                            Some(commit) => {
+                                match commit.checkout() {
+                                    Ok(_) => return print_output("Pull successfully!"),
+                                    Err(err) => {}
+                                }
+                            }
+                            None => {}
+                        }
+                    }
+                    Err(_) => {}
+                }
+            }
+            None => {}
+        }
+    } else {
+        std::env::set_current_dir(&og_dir);
+        remove(".goldfish_temp");
+        return print_error("Failed to pull the content from specified URL/address");
+    }
 }
+
+fn try_clone(url: &str) -> Option<bool> {
+    create_dir(".goldfish_temp");
+    std::env::set_current_dir(format!("{}{}", std::env::current_dir().unwrap().display(), "/.goldfish_temp"));
+    let download_succeeded = networking::rsync(url, ".goldfish");
+    if download_succeeded {
+        match Repository::find(".goldfish") {
+            Some(repo) => {
+                match repo.read_head() {
+                    Ok(head_id) => {
+                        match Commit::get(&repo, head_id.as_str()) {
+                            Some(commit) => {
+                                match commit.checkout() {
+                                    Ok(_) => return Some(true),
+                                    Err(err) => return None,
+                                }
+                            }
+                            None => return None
+                        }
+                    }
+                    Err(_) => return None
+                }
+            }
+            None => None
+        }
+    } else {
+        return None;
+    }
+}
+
 
 pub fn set_remote() {
     //! Sets the remote links for pull and push
