@@ -429,12 +429,20 @@ pub struct Change_bin {
 }
 
 impl Change_bin {
-    pub fn create(T: String, L: Vec<(String,String)>) ->Change_bin {
+    pub fn create(T: String, L: Vec<(String,String)>) -> Change_bin {
         Change_bin{
             tag: T,
             line_list: L,
         }
     }
+
+    pub fn get_tag(&self) -> &str{
+        self.tag.as_str()
+    }
+    pub fn get_line_list(&self) -> &Vec<(String,String)>{
+        &self.line_list
+    }
+    
 
 }
 

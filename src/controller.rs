@@ -782,13 +782,65 @@ fn merge_files(repo: &Repository, blob1_id: &str, blob2_id: &str, rev1_id: &str,
 // End of helper functions for merge
 
 pub fn merge(commit: &str) {
+    if check_status() == Some(true){
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
             match Commit::get(&repo, repo.get_current_commit_id().unwrap().as_str()){
                 Some(current) => {
                     match Commit::get(&repo, commit){
                         Some(update) => {
+                            match update.load_tracked_files(){
+                                Some(tracked_file_list2) => {
+                                    match commit_diff(&current, &update, &repo){
+                                        Some(map) => {
+                                            for(file, diff_list) in map.iter(){
+                                                match diff_list.get_tag() {
+                                                    "-" => {
+
                                                     }
+                                                    "+" => {
+
+
+                                                        
+
+
+
+                                                        for (file_path, blob_id) in &tracked_file_list2 {
+                                                            if file == file_path{
+                                                                match Blob::get(&repo, blob_id.as_str()) {
+                                                                Some(blob) => {
+                                                                    write_file(
+                                                                        blob.get_blob_content().unwrap().as_str(),
+                                                                        join_path(vec![
+                                                                            repo.get_working_path(),
+                                                                            file_path.as_str(),
+                                                                        ])
+                                                                        .as_str(),
+                                                                    );
+                                                                }
+                                                                None => return print_error(
+                                                                    "Something went wrong creating the committed files",
+                                                                ),
+                                                            }
+                                                            }
+                                                            
+                                                        }
+                                                    }
+                                                    "=" => {
+                                                        //merge_file(curr, update, file, diff_list.get_line_list());
+                                                        
+                                                    }
+                                                    _ => return print_error("Problem with file merge tag")
+
+                                                }
+                                            }
+                                        }
+                                        None => {}
+                                    }
+                                }
+                                None => {}
+                            }
+                         }
                         None => {}
                     }
                 }
@@ -797,18 +849,29 @@ pub fn merge(commit: &str) {
         }
         None => {}
     }
+    }else{
+        return print_error("Can't merge, files in staging or WD")
+    }
+
+
 
 }
+
+
 
 
 pub fn push() {
     //! Use the ServerContent interface in `networking` to make a push request to a different
+
+pub fn push(url: &str) {
+    //! Use `networking` to make a push request to a different
+
     //! dvcs server
-    todo!()
+
 }
 
-pub fn pull() {
-    //! Use the ServerContent interface in `networking` to make a pull request to a different
+pub fn pull(url: &str) {
+    //! Use `networking` to make a pull request to a different
     //! dvcs server
     todo!()
 }
