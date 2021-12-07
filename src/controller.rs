@@ -831,9 +831,9 @@ pub fn merge(commit: &str) {
                                                             }
                                                             "=" => {
                                                                 for(file_path1, blob_id1) in &tracked_file_list1{
-                                                                    for(file_path2, blob_id1){
+                                                                    for(file_path2, blob_id2) in &tracked_file_list2{
                                                                         if file == file_path1 && file == file_path2{
-                                                                            merge_files(repo, blob1_id, blob2_id);
+                                                                            merge_files(&repo, blob_id1.as_str(), blob_id2.as_str(), current.get_id().as_str(), update.get_id().as_str());
                                                                         }
                                                                     }
                                                                 }
