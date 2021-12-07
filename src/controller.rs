@@ -757,7 +757,7 @@ fn create_conflict(
     add_line(result, &format!(">>>>>>>>>> {}", blob2_id));
 }
 
-fn merge_files(repo: &Repository, blob1_id: &str, blob2_id: &str) -> String {
+fn merge_files(repo: &Repository, blob1_id: &str, blob2_id: &str, rev1_id: &str, rev2_id: &str) -> String {
     let blob1 = get_blob_content_as_vec(repo, blob1_id);
     let blob2 = get_blob_content_as_vec(repo, blob2_id);
     let diff_content = utilities::diff(blob1, blob2);
@@ -770,13 +770,13 @@ fn merge_files(repo: &Repository, blob1_id: &str, blob2_id: &str) -> String {
         } else if typ == "+" {
             blob2_content.push(content);
         } else {
-            create_conflict(&mut result, &blob1_content, &blob2_content, blob1_id, blob2_id);
+            create_conflict(&mut result, &blob1_content, &blob2_content, rev1_id, rev2_id);
             add_line(&mut result, &content);
             blob1_content.clear();
             blob2_content.clear();
         }
     }
-    create_conflict(&mut result, &blob1_content, &blob2_content, blob1_id, blob2_id);
+    create_conflict(&mut result, &blob1_content, &blob2_content, rev1_id, rev2_id);
     return result;
 }
 // End of helper functions for merge
