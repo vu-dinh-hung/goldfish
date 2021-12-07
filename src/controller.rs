@@ -791,6 +791,11 @@ pub fn merge(commit: &str) {
                     match Commit::get(&repo, commit){
                         Some(update) => {
 
+                            if current.get_lowest_common_parent_with(&update).unwrap().get_id() == update.get_id(){
+                                update.checkout();
+                                return ()
+                            }
+
                             match update.load_tracked_files(){
                                 Some(tracked_file_list2) => {
                                     match current.load_tracked_files(){
