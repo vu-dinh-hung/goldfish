@@ -50,17 +50,47 @@ pub fn clone(url: &str, folder_name: &str) {
     //! and load the full directory into the folder
     //! Example url: username@host:path/to/.goldfish
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
-        Some(repo) => return print_error("Already a repository"),
+        Some(_) => return print_error("Cannot clone, already a repository"),
         None => {
+            // create the base folder for the new local repository
             let working_path = join_path(vec![".", folder_name]);
-            create_dir(working_path.as_str());
+            if let Err(_) = create_dir(working_path.as_str()) {
+                print_output_string(format!("Something went wrong creating the {} folder for the repository", working_path));
+            }
+
+            // download the .goldfish folder (repository data) from the given url
             let download_succeeded = networking::rsync(url, working_path.as_str());
             if download_succeeded {
                 print_output("--> Finished downloading repository data; now populating working tree");
-
+                match Repository::find(working_path.as_str()) {
+                    Some(repo) => {
+                        match repo.read_head() {
+                            Ok(head_id) => {
+                                match Commit::get(&repo, head_id.as_str()) {
+                                    Some(commit) => {
+                                        match commit.checkout() {
+                                            Ok(_) => return print_output("Successfully cloned repository"),
+                                            Err(err) => {
+                                                print_error("Error checking out the HEAD commit:");
+                                                print_error_string(err)
+                                            }
+                                        }
+                                    }
+                                    None => print_output("Something went wrong loading the HEAD commit")
+                                }
+                            }
+                            Err(_) => print_output("Something went wrong leading the HEAD commit")
+                        }
+                    }
+                    None => print_output("Something went wrong creating the repository")
+                }
             } else {
-                remove(working_path.as_str());
-                return print_error(format!("Cannot fetch repository data from the given url: {}", url).as_str());
+                print_error(format!("Cannot fetch repository data from the given url: {}", url).as_str());
+            }
+
+            // cleanup
+            if let Err(_) = remove(working_path.as_str()) {
+                print_error_string(format!("Something went wrong cleaning up the {} repository folder", working_path));
             }
         }
     }
