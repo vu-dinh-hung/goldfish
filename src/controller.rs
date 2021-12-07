@@ -1000,31 +1000,52 @@ fn copy_and_mark_fike_tracked(repo: &Repository, abs_path: &str, rel_path_to_wd:
 
 pub fn add_track_file(path: &str) {
     // sanity check
-    if !is_file(path) && !is_dir(path) {
-        return print_error(format!("{} did not match any file or folder", path).as_str());
-    }
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
-            let abs_path = pathbuf_to_string(get_absolute_path(path));
-            let rel_path_to_wd =
-                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
-            if !is_dir(path) {
-                copy_and_mark_fike_tracked(&repo, abs_path.as_str(), rel_path_to_wd.as_str());
-            } else {
-                match list_files(abs_path.as_str(), true, &vec![repo.get_repo_path()]) {
-                    Ok(files) => {
-                        for file_path in files {
-                            let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
-                            let rel_path_to_wd =
-                                get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
-                            copy_and_mark_fike_tracked(
-                                &repo,
-                                abs_path.as_str(),
-                                rel_path_to_wd.as_str(),
-                            );
+            if !is_file(path) && !is_dir(path) {
+                match repo.read_head() {
+                    Ok(head_id) => {
+                        match Commit::get(&repo, head_id.as_str()) {
+                            Some(commit) => {
+                                match commit.load_tracked_files() {
+                                    Some(files_lookup) => {
+                                        for (committed_file, blob_id) in &files_lookup {
+                                            if compare_paths(committed_file, path) {
+                                                // delete file from track file
+                                            }
+                                        }
+                                    }
+                                    None => return print_error("Something went wrong loading the HEAD commit")
+                                }
+                            }
+                            None => return print_output("Something went wrong loading the HEAD commit")
                         }
                     }
-                    Err(_e) => (),
+                    Err(_) => return print_output("Something went wrong leading the HEAD commit")
+                }
+                return print_error(format!("{} did not match any file or folder", path).as_str());
+            } else {
+                let abs_path = pathbuf_to_string(get_absolute_path(path));
+                let rel_path_to_wd =
+                    get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
+                if !is_dir(path) {
+                    copy_and_mark_fike_tracked(&repo, abs_path.as_str(), rel_path_to_wd.as_str());
+                } else {
+                    match list_files(abs_path.as_str(), true, &vec![repo.get_repo_path()]) {
+                        Ok(files) => {
+                            for file_path in files {
+                                let abs_path = pathbuf_to_string(get_absolute_path(file_path.as_str()));
+                                let rel_path_to_wd =
+                                    get_relative_path_from_base(repo.get_working_path(), abs_path.as_str());
+                                copy_and_mark_fike_tracked(
+                                    &repo,
+                                    abs_path.as_str(),
+                                    rel_path_to_wd.as_str(),
+                                );
+                            }
+                        }
+                        Err(_e) => (),
+                    }
                 }
             }
         }
