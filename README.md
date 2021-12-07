@@ -13,8 +13,6 @@ CSC 253 DVCS implementation
 
 **blobs folder:** contains blob file (copy of files at some moments)
 
-**branches folder:** No idea :)
-
 **commits folder:** contains commits file
 - Commit file stores 2 values:
   - parent: its parent commit
@@ -27,7 +25,7 @@ CSC 253 DVCS implementation
 
 **tracked_files file**: list of files and their blob ids for staging
 
-## How things workk
+## How things work
 ### 1. Init
 - Check if the current folder is already goldfish project or not (by checking itself and its parent containing .goldfish folder or not)
 - If already goldfish folder, error
@@ -72,5 +70,3 @@ Comparing current WD with staging
 - Replace staging tracked file list with the commit's tracked file list
 - Copy the staging area to the working path
 - Clean staging
-  
-*Step 2 is pretty redundant as we can copy directly to WD but we are lazy 😴*

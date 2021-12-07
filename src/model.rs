@@ -70,10 +70,6 @@ impl Repository {
         filesystem::join_path(vec![&self.repo_path, STAGING_DIR])
     }
 
-    pub fn clean_staging(&self) {
-        filesystem::remove(&self.get_staging_path()).unwrap();
-    }
-
     pub fn get_blobs_path(&self) -> String {
         filesystem::join_path(vec![&self.repo_path, BLOBS_DIR])
     }
@@ -267,14 +263,19 @@ impl<'a> Commit<'a> {
                 for (file_path, blob_id) in &tracked_file_list {
                     match Blob::get(&repo, blob_id.as_str()) {
                         Some(blob) => {
-                            filesystem::write_file(
+                            match filesystem::write_file(
                                 blob.get_blob_content().unwrap().as_str(),
                                 filesystem::join_path(vec![
                                     repo.get_staging_path().as_str(),
                                     file_path.as_str(),
                                 ])
                                 .as_str(),
-                            );
+                            ) {
+                                Ok(_) => {}
+                                Err(_) => return Err(
+                                    String::from("Something went wrong when writing files. Please try again")
+                                ),
+                            }
                         }
                         None => return Err(
                             String::from("Something went wrong creating the committed files"),
@@ -399,10 +400,6 @@ impl<'a> Commit<'a> {
         &self.direct_parent_id
     }
 
-    pub fn get_secondary_parent_ids(&self) -> &Vec<String> {
-        &self.secondary_parent_ids
-    }
-
     pub fn get_direct_parent(&self) -> Option<Commit> {
         Commit::get(&self.repo, &self.direct_parent_id)
     }
@@ -423,27 +420,22 @@ impl<'a> Commit<'a> {
 }
 
 #[derive(Debug)]
-pub struct Change_bin {
+pub struct ChangeBin {
     tag: String,
     line_list: Vec<(String,String)>,
 }
 
-impl Change_bin {
-    pub fn create(T: String, L: Vec<(String,String)>) -> Change_bin {
-        Change_bin{
-            tag: T,
-            line_list: L,
+impl ChangeBin {
+    pub fn create(t: String, l: Vec<(String,String)>) -> ChangeBin {
+        ChangeBin{
+            tag: t,
+            line_list: l,
         }
     }
 
     pub fn get_tag(&self) -> &str{
         self.tag.as_str()
     }
-    pub fn get_line_list(&self) -> &Vec<(String,String)>{
-        &self.line_list
-    }
-    
-
 }
 
 /**
@@ -491,86 +483,5 @@ impl Blob {
 
     pub fn get_id(&self) -> &str {
         &self.id
-    }
-
-    pub fn get_path(&self) -> &str {
-        &self.path
-    }
-}
-
-/* Internal functions */
-fn diff_blobs(vf1: &Blob, vf2: &Blob) -> Option<Blob> {
-    todo!()
-}
-
-fn merge_blobs(vf1: &Blob, vf2: &Blob) -> Blob {
-    todo!()
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_diff_virtual_files() {
-        todo!();
-    }
-
-    #[test]
-    fn test_merge_virtual_files() {
-        todo!();
-    }
-
-    #[test]
-    fn test_get_list_of_track_file_corrupted_dvcs() {
-        todo!();
-    }
-
-    #[test]
-    fn test_get_list_of_track_file_normal() {
-        todo!();
-    }
-
-    #[test]
-    fn test_add_file_not_exist() {
-        todo!();
-    }
-
-    #[test]
-    fn test_add_file_normal() {
-        todo!();
-    }
-
-    #[test]
-    fn test_delete_file_not_exist() {
-        todo!();
-    }
-
-    #[test]
-    fn test_delete_file_normal() {
-        todo!();
-    }
-
-    #[test]
-    fn test_get_current_revision_corrupted_dvcs() {
-        todo!();
-    }
-
-    #[test]
-    fn test_get_current_revision_normal() {
-        todo!();
-    }
-
-    #[test]
-    fn test_get_current_branch_corrupted_dvcs() {
-        todo!();
-    }
-
-    #[test]
-    fn test_get_current_branch_normal() {
-        todo!();
-    }
-
-    #[test]
-    fn create_virtual_file_from_path_not_exist() {
-        todo!();
     }
 }

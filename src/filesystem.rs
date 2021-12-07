@@ -1,20 +1,3 @@
-// pub fn test_1_read_file(){
-// 	assert_eq!(dvcs.read_file(fileContainingHelloWorld), Ok("Hello World"))
-// }
-// pub fn test_2_write_file(){
-// 	assert_eq!(dvcs.write_file(invalidpath, somedata), Err("InvalidPathError"))
-// }
-// pub fn test_3_move_file(){
-// 	assert_eq!(dvcs.move_file(sourcepath, destpath, c=true), true)
-// 	assert_eq!(dvcs.read_file(sourcepath), dvcs.read_file(destpath))
-// }
-// pub fn test_4_remove_file(){
-// 	assert_eq!(dvcs.remove_file(path, r=true), true)
-// 	pathprime = path + "/filename"
-// 	assert_eq!(dvcs.write_file(pathprime), Err("InvalidPathError"))
-// }
-
-//! Filesystem
 use pathdiff;
 use std::fs;
 use std::io;
@@ -126,14 +109,6 @@ pub fn remove(path: &str) -> io::Result<()> {
     } else {
         Err(io::Error::new(io::ErrorKind::Other, "Invalid path"))
     }
-}
-
-pub fn list(path: &str) -> io::Result<Vec<String>> {
-    fs::read_dir(path).map(|iterator| {
-        iterator
-            .map(|dir_entry_result| pathbuf_to_string(dir_entry_result.unwrap().path()))
-            .collect()
-    })
 }
 
 pub fn copy(source: &str, dest: &str) -> io::Result<()> {

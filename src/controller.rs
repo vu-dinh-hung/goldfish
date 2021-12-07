@@ -4,7 +4,7 @@ use crate::filesystem::*;
 use crate::filesystem;
 use crate::model;
 use crate::networking;
-use crate::model::{Blob, Commit, Repository, Change_bin};
+use crate::model::{Blob, Commit, Repository, ChangeBin};
 use crate::utilities;
 use std::collections::HashMap;
 use std::path::Path;
@@ -126,7 +126,7 @@ pub fn commit() {
                         }
                     }
                 }
-                Err(e) => head_tracked_files = HashMap::new(),
+                Err(_) => head_tracked_files = HashMap::new(),
             }
             if utilities::compare_map(&staging_tracked_files, &head_tracked_files) {
                 print_output("Nothing to commit")
@@ -217,7 +217,7 @@ pub fn status() {
                         }
                     }
                 }
-                Err(e) => head_tracked_files = HashMap::new(),
+                Err(_) => head_tracked_files = HashMap::new(),
             }
             if !utilities::compare_map(&staging_tracked_files, &head_tracked_files) {
                 change = true;
@@ -287,7 +287,6 @@ pub fn status() {
 fn check_status() -> Option<bool> {
     match Repository::find(pathbuf_to_string(std::env::current_dir().unwrap()).as_str()) {
         Some(repo) => {
-            let mut change = false;
             // Comparing staging with HEAD
             let staging_tracked_files;
             match repo.get_staging_tracked_files() {
@@ -318,7 +317,7 @@ fn check_status() -> Option<bool> {
                         }
                     }
                 }
-                Err(e) => head_tracked_files = HashMap::new(),
+                Err(_) => head_tracked_files = HashMap::new(),
             }
             // Comparing current WD with staging
             let mut wd_files = HashMap::new();
@@ -591,8 +590,8 @@ pub fn checkout(commit_id: &str) {
 
 
 
-//returns a Hashmap mapping filename to Change_bin
-pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Option<HashMap<String, Change_bin>> {
+//returns a Hashmap mapping filename to ChangeBin
+pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Option<HashMap<String, ChangeBin>> {
     fn get_diff_files(tracked_file_list1: &HashMap<String, String>,
                         tracked_file_list2: &HashMap<String, String>) -> Vec<String> {
         let mut result: Vec<String> = vec![];
@@ -612,7 +611,7 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
     }
 
 
-    let mut result : HashMap<String, Change_bin> = HashMap::new();
+    let mut result : HashMap<String, ChangeBin> = HashMap::new();
     // Takes in two commit hashes and use the `display` module to print out the changes
     // between the two files
 
@@ -626,7 +625,7 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
 
 
                     for file in added_files {
-                        result.insert(file, Change_bin::create(
+                        result.insert(file, ChangeBin::create(
                             String::from("+"),
                             vec![],
                         ));
@@ -634,7 +633,7 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
 
 
                     for file in removed_files{
-                        result.insert(file, Change_bin::create(
+                        result.insert(file, ChangeBin::create(
                             String::from("-"),
                             vec![],
                         ));
@@ -666,7 +665,7 @@ pub fn commit_diff<'b>(a: &'b Commit, b: &'b Commit, repo: &Repository) -> Optio
                                                             let file_vec2: Vec<String> = content2.lines().collect::<Vec<&str>>()
                                                                                             .iter().map(|s| s.to_string()).collect();
                                                             let diff_content = utilities::diff(file_vec1, file_vec2);
-                                                            result.insert(file_path1.to_string(), Change_bin::create(
+                                                            result.insert(file_path1.to_string(), ChangeBin::create(
                                                                 String::from("="),
                                                                 diff_content,
                                                             ));
@@ -795,8 +794,10 @@ pub fn merge(commit: &str) {
                         Some(update) => {
 
                             if current.get_lowest_common_parent_with(&update).unwrap().get_id() == update.get_id(){
-                                update.checkout();
-                                return ()
+                                match update.checkout() {
+                                    Ok(_) => return (),
+                                    Err(_) => return print_error("Something went wrong when checking out"),
+                                }
                             }
 
                             match update.load_tracked_files(){
@@ -807,52 +808,41 @@ pub fn merge(commit: &str) {
                                                 Some(map) => {
                                                     for(file, diff_list) in map.iter(){
                                                         match diff_list.get_tag() {
-                                                            "-" => {
-
-                                                            }
+                                                            "-" => { }
                                                             "+" => {
-
-
-
-
                                                                 for(file_path2, blob_id2) in &tracked_file_list2{
                                                                     if file == file_path2{
                                                                         let content = Blob::get(&repo, blob_id2).unwrap().get_blob_content().unwrap();
-                                                                        filesystem::write_file(
-                                                                        content.as_str(),
-                                                                        filesystem::join_path(
-                                                                            vec![repo.get_working_path(), file.as_str()]
+                                                                        match filesystem::write_file(
+                                                                            content.as_str(),
+                                                                            filesystem::join_path(
+                                                                                vec![repo.get_working_path(), file.as_str()]
                                                                             ).as_str()
-
-                                                                    );
-                                                                        return ()
+                                                                        ) {
+                                                                            Ok(_) => return (),
+                                                                            Err(_) => return print_error("Something went wrong writing files"),
+                                                                        }
                                                                     }
                                                                 }
-
-
-
-
                                                             }
                                                             "=" => {
                                                                 for(file_path1, blob_id1) in &tracked_file_list1{
                                                                     for(file_path2, blob_id2) in &tracked_file_list2{
                                                                         if file == file_path1 && file == file_path2{
-                                                                            filesystem::write_file(
+                                                                            match filesystem::write_file(
                                                                                     merge_files(&repo, blob_id1.as_str(), blob_id2.as_str(), current.get_id().as_str(), update.get_id().as_str()).as_str(),
                                                                                     filesystem::join_path(
                                                                                         vec![repo.get_working_path(), file]
-                                                                                        ).as_str()
-                                                                                );
-                                                                            return ()
-
+                                                                                    ).as_str()
+                                                                            ) {
+                                                                                Ok(_) => return (),
+                                                                                Err(_) => return print_error("Something went wrong writing files"),
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
-
-
                                                             }
                                                             _ => return print_error("Problem with file merge tag")
-
                                                         }
                                                     }
                                                 }
@@ -904,8 +894,14 @@ pub fn pull(url: &str) {
     }
     let og_dir: String = std::env::current_dir().unwrap().to_str().unwrap().to_string();
     if try_clone(url).is_some() {
-        std::env::set_current_dir(&og_dir);
-        remove(".goldfish_temp");
+        match std::env::set_current_dir(&og_dir) {
+            Ok(_) => {},
+            Err(_) => return print_error("Something went wrong. Please try again"),
+        }
+        match remove(".goldfish_temp") {
+            Ok(_) => {},
+            Err(_) => {},
+        }
         networking::rsync(url, ".goldfish");
         match Repository::find(".goldfish") {
             Some(repo) => {
@@ -915,7 +911,7 @@ pub fn pull(url: &str) {
                             Some(commit) => {
                                 match commit.checkout() {
                                     Ok(_) => return print_output("Pull successfully!"),
-                                    Err(err) => {}
+                                    Err(_) => {}
                                 }
                             }
                             None => {}
@@ -927,15 +923,27 @@ pub fn pull(url: &str) {
             None => {}
         }
     } else {
-        std::env::set_current_dir(&og_dir);
-        remove(".goldfish_temp");
+        match std::env::set_current_dir(&og_dir) {
+            Ok(_) => {},
+            Err(_) => return print_error("Something went wrong. Please try again"),
+        }
+        match remove(".goldfish_temp") {
+            Ok(_) => {},
+            Err(_) => {},
+        }
         return print_error("Failed to pull the content from specified URL/address");
     }
 }
 
 fn try_clone(url: &str) -> Option<bool> {
-    create_dir(".goldfish_temp");
-    std::env::set_current_dir(format!("{}{}", std::env::current_dir().unwrap().display(), "/.goldfish_temp"));
+    match create_dir(".goldfish_temp") {
+        Ok(_) => {},
+        Err(_) => return None,
+    }
+    match std::env::set_current_dir(format!("{}{}", std::env::current_dir().unwrap().display(), "/.goldfish_temp")) {
+        Ok(_) => {},
+        Err(_) => return None,
+    }
     let download_succeeded = networking::rsync(url, ".goldfish");
     if download_succeeded {
         match Repository::find(".goldfish") {
@@ -946,7 +954,7 @@ fn try_clone(url: &str) -> Option<bool> {
                             Some(commit) => {
                                 match commit.checkout() {
                                     Ok(_) => return Some(true),
-                                    Err(err) => return None,
+                                    Err(_) => return None,
                                 }
                             }
                             None => return None
@@ -960,12 +968,6 @@ fn try_clone(url: &str) -> Option<bool> {
     } else {
         return None;
     }
-}
-
-
-pub fn set_remote() {
-    //! Sets the remote links for pull and push
-    todo!()
 }
 
 fn copy_and_mark_fike_tracked(repo: &Repository, abs_path: &str, rel_path_to_wd: &str) {
@@ -1009,7 +1011,7 @@ pub fn add_track_file(path: &str) {
                             Some(commit) => {
                                 match commit.load_tracked_files() {
                                     Some(files_lookup) => {
-                                        for (committed_file, blob_id) in &files_lookup {
+                                        for (committed_file, _blob_id) in &files_lookup {
                                             if compare_paths(committed_file, path) {
                                                 // delete file from track file
                                             }

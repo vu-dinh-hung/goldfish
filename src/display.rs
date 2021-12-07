@@ -74,25 +74,3 @@ pub fn print_help() {
     println!("14. push [url]: push changes into another repository");
     println!("15. quit: quit the program");
 }
-
-#[cfg(test)]
-mod tests {
-    /*
-        @input: message "Clone Successfully!"
-        @expect: method PrintOutput prints message to terminal
-    */
-    #[test]
-    fn test_print_output_given_message() {
-        todo!();
-    }
-
-    /*
-        @input: message "Invalid number of arguments for command clone"
-        @expect: method PrintError prints message to terminal
-    */
-    #[test]
-    fn test_print_error_given_message() {
-        todo!();
-    }
-
-}

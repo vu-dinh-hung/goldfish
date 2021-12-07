@@ -116,10 +116,4 @@ mod tests {
         expected_result.push(("-".to_string(), "hello".to_string()));
         assert_eq!(expected_result, diff(a,b));
     }
-
-    #[test]
-    fn test_2_hash() {
-        //! Check that several different strings return unique hashes
-        todo!();
-    }
 }
